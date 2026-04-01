@@ -1,0 +1,86 @@
+DROP DATABASE IF EXISTS ptitsocialchat;
+
+CREATE DATABASE IF NOT EXISTS ptitsocialchat
+DEFAULT CHARACTER SET utf8mb4
+COLLATE utf8mb4_general_ci;
+
+USE ptitsocialchat;
+
+-- USERS
+CREATE TABLE users (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    full_name VARCHAR(255),
+    role VARCHAR(255),
+    avatar VARCHAR(255) DEFAULT NULL
+) ENGINE=InnoDB;
+
+INSERT INTO users (id, full_name, password, role, username, avatar) VALUES
+(1, 'Nguyễn Văn A', 'password123', 'ROLE_USER', 'vana', NULL),
+(2, 'Trần Thị B', 'password123', 'ROLE_USER', 'thib', NULL),
+(3, 'Lê Văn C', 'password123', 'ROLE_ADMIN', 'adminc', NULL);
+
+-- POSTS
+CREATE TABLE posts (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    content VARCHAR(255),
+    image_url VARCHAR(255),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    user_id BIGINT NOT NULL,
+    CONSTRAINT FK_USER_POST FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- COMMENTS
+CREATE TABLE comments (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    content VARCHAR(255),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    post_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    CONSTRAINT FK_COMMENT_POST FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    CONSTRAINT FK_COMMENT_USER FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- FRIEND REQUESTS
+CREATE TABLE friend_requests (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    status VARCHAR(50) NOT NULL,
+    sender_id BIGINT NOT NULL,
+    receiver_id BIGINT NOT NULL,
+    UNIQUE KEY uk_friend_request (sender_id, receiver_id),
+    CONSTRAINT FK_FR_SENDER FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT FK_FR_RECEIVER FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- FRIENDS
+CREATE TABLE friends (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user1_id BIGINT NOT NULL,
+    user2_id BIGINT NOT NULL,
+    UNIQUE KEY uk_friend_pair (user1_id, user2_id),
+    CONSTRAINT FK_FRIEND_1 FOREIGN KEY (user1_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT FK_FRIEND_2 FOREIGN KEY (user2_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- MESSAGES
+CREATE TABLE messages (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    content VARCHAR(255),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    sender_id BIGINT NOT NULL,
+    receiver_id BIGINT NOT NULL,
+    CONSTRAINT FK_MSG_SENDER FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT FK_MSG_RECEIVER FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- POST LIKES
+CREATE TABLE post_likes (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    post_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_post_user (post_id, user_id),
+    CONSTRAINT FK_LIKE_POST FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    CONSTRAINT FK_LIKE_USER FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
