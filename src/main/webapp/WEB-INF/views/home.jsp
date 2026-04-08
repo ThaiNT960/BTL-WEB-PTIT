@@ -3,82 +3,15 @@
         <!DOCTYPE html>
         <html lang="vi">
 
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>PTIT Social - Trang Chủ</title>
-            <script src="https://cdn.tailwindcss.com"></script>
-            <script>
-                tailwind.config = {
-                    theme: {
-                        extend: {
-                            colors: { primary: '#ae1a21', 'primary-dark': '#8a141a' },
-                            fontFamily: { sans: ['Inter', 'sans-serif'] }
-                        }
-                    }
-                }
-            </script>
-            <link rel="preconnect" href="https://fonts.googleapis.com">
-            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-                rel="stylesheet">
-            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-            <link rel="stylesheet" href="${pageContext.request.contextPath}/css/app.css">
-        </head>
+        <c:set var="pageTitle" value="PTIT Social - Trang Chủ" />
+        <jsp:include page="/WEB-INF/views/layout/header.jsp" />
 
         <body class="bg-gray-100 font-sans text-gray-900">
 
             <!-- NAVBAR -->
-            <nav class="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm"
-                style="height:60px">
-                <div class="max-w-5xl mx-auto px-5 h-full flex items-center justify-between gap-4">
-                    <a href="${pageContext.request.contextPath}/HomeServlet"
-                        class="flex items-center gap-2 text-primary font-bold text-lg flex-shrink-0 no-underline">
-                        <img src="${pageContext.request.contextPath}/img/logo_ptit.svg" alt="PTIT Logo"
-                            class="w-10 h-10 object-contain">
-                        PTIT Social
-                    </a>
-                    <div class="flex items-center gap-1">
-                        <a href="${pageContext.request.contextPath}/HomeServlet" class="nav-link active"><i
-                                class="fas fa-home"></i> Trang chủ</a>
-                        <a href="${pageContext.request.contextPath}/FriendServlet" class="nav-link"><i
-                                class="fas fa-user-friends"></i> Bạn bè</a>
-                        <a href="${pageContext.request.contextPath}/ChatServlet" class="nav-link"><i
-                                class="fas fa-comment-dots"></i> Tin nhắn</a>
-                    </div>
-                    <div class="flex items-center gap-3 flex-shrink-0 relative">
-                        <c:if test="${sessionScope.role == 'ROLE_ADMIN'}">
-                            <a href="${pageContext.request.contextPath}/AdminServlet"
-                                class="nav-link text-primary font-semibold"><i class="fas fa-shield-alt"></i> Admin</a>
-                        </c:if>
-                        <div class="relative" id="navAvatarWrap">
-                            <button onclick="toggleUserMenu()"
-                                class="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-bold text-base focus:outline-none"
-                                id="navAvatar">
-                                <c:choose>
-                                    <c:when test="${not empty sessionScope.avatar}">
-                                        <img src="${sessionScope.avatar}"
-                                            class="w-full h-full object-cover rounded-full"
-                                            onerror="this.parentElement.textContent='${sessionScope.fullName != null ? sessionScope.fullName.charAt(0) : 'U'}'" />
-                                    </c:when>
-                                    <c:otherwise>
-                                        ${empty sessionScope.fullName ? 'U' :
-                                        sessionScope.fullName.substring(0,1).toUpperCase()}
-                                    </c:otherwise>
-                                </c:choose>
-                            </button>
-                            <div id="userMenu"
-                                class="hidden absolute right-0 top-12 bg-white border border-gray-200 rounded-xl shadow-lg w-44 overflow-hidden z-50">
-                                <a href="${pageContext.request.contextPath}/ProfileServlet"
-                                    class="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"><i
-                                        class="fas fa-user text-primary w-4"></i> Trang cá nhân</a>
-                                <a href="${pageContext.request.contextPath}/LogoutServlet"
-                                    class="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"><i
-                                        class="fas fa-sign-out-alt text-primary w-4"></i> Đăng xuất</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </nav>
+            <jsp:include page="/WEB-INF/views/layout/navbar.jsp">
+                <jsp:param name="activeMenu" value="home" />
+            </jsp:include>
 
             <!-- PAGE CONTENT -->
             <main class="pt-20 pb-10">
@@ -90,15 +23,22 @@
                             <textarea id="postContent" rows="3"
                                 class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder-gray-400 resize-none focus:outline-none focus:border-primary focus:bg-white transition"
                                 placeholder="Bạn đang nghĩ gì?"></textarea>
-                            <input type="text" id="postImage"
-                                class="w-full mt-2 bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:border-primary transition"
-                                placeholder="URL hình ảnh (tùy chọn)">
+                                
+                            <!-- Image Upload Preview -->
+                            <div id="createPostImagePreviewContainer" class="hidden mt-3 relative inline-block">
+                                <img id="createPostImagePreview" src="" class="h-32 rounded-lg object-cover border border-gray-200 shadow-sm">
+                                <button type="button" id="cancelPostImagePreview" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shadow hover:bg-red-600 transition">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <input type="file" id="postImageFile" accept="image/*" class="hidden">
+
                             <div class="flex items-center justify-between mt-3">
-                                <div class="flex items-center gap-2 text-gray-400 text-sm px-2">
-                                    <i class="fas fa-image"></i><span>Hình ảnh</span>
+                                <div class="flex items-center gap-2 text-gray-500 hover:text-primary transition cursor-pointer text-sm px-2 font-medium" onclick="document.getElementById('postImageFile').click()">
+                                    <i class="fas fa-image text-lg"></i><span>Hình ảnh</span>
                                 </div>
-                                <button type="submit"
-                                    class="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white text-sm font-semibold px-5 py-2 rounded-full transition">
+                                <button type="submit" id="postSubmitBtn"
+                                    class="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white text-sm font-semibold px-5 py-2 rounded-full transition shadow-sm disabled:opacity-50">
                                     <i class="fas fa-paper-plane"></i> Đăng
                                 </button>
                             </div>
@@ -137,7 +77,8 @@
                     }
                 });
             </script>
-            <script src="${pageContext.request.contextPath}/js/home-servlet.js"></script>
+            <script src="${pageContext.request.contextPath}/js/api-client.js?v=2.0"></script>
+            <script src="${pageContext.request.contextPath}/js/home-servlet.js?v=2.0"></script>
         </body>
 
         </html>

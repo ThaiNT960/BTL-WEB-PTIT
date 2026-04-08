@@ -1,16 +1,41 @@
 package com.ptit.socialchat.model;
 
+import javax.persistence.*;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+@Entity
+@Table(name = "posts")
 public class Post {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
+
+    @Column(columnDefinition = "TEXT")
     private String content;
+
+    @Column(name = "image_url", length = 500)
     private String imageUrl;
-    private String createdAt;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<Comment> comments = new ArrayList<>();
+
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<PostLike> likes = new ArrayList<>();
+
+    @Transient
     private int likeCount;
+
+    @Transient
     private boolean liked;
 
     public Post() {
@@ -40,11 +65,11 @@ public class Post {
         this.imageUrl = imageUrl;
     }
 
-    public String getCreatedAt() {
+    public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(String createdAt) {
+    public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
     }
 
@@ -64,7 +89,16 @@ public class Post {
         this.comments = comments;
     }
 
+    public List<PostLike> getLikes() {
+        return likes;
+    }
+
+    public void setLikes(List<PostLike> likes) {
+        this.likes = likes;
+    }
+
     public int getLikeCount() {
+        // Can optionally calculate this from likes.size() but it could be populated efficiently via query
         return likeCount;
     }
 

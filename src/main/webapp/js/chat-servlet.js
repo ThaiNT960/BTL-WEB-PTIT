@@ -36,14 +36,17 @@ function selectChat(username, fullName) {
     // Highlight active contact
     document.querySelectorAll('.chat-contact-item').forEach(item => {
         if (item.dataset.username === username) {
-            item.classList.add('bg-red-50');
+            item.classList.add('active');
         } else {
-            item.classList.remove('bg-red-50');
+            item.classList.remove('active');
         }
     });
 
     // Clear messages and load history
     document.getElementById('chatMessages').innerHTML = '';
+    const emptyPlaceholder = document.getElementById('emptyChatPlaceholder');
+    if (emptyPlaceholder) emptyPlaceholder.classList.add('hidden');
+    
     lastMessageCount = 0;
     loadChatHistory(true);
 
@@ -55,21 +58,39 @@ function selectChat(username, fullName) {
 async function loadChatHistory(scrollBottom) {
     if (!currentChatUser) return;
     try {
-        const res = await fetch(`${CTX}/ChatServlet?action=history&otherUser=${encodeURIComponent(currentChatUser)}`);
-        const messages = await res.json();
+        const url = `${CTX}/ChatServlet?action=history&otherUser=${encodeURIComponent(currentChatUser)}`;
+        const messages = await apiFetch(url);
+
+        const msgsContainer = document.getElementById('chatMessages');
+        const emptyPlaceholder = document.getElementById('emptyChatPlaceholder');
+
+        if (!messages || messages.length === 0) {
+            msgsContainer.classList.add('hidden');
+            emptyPlaceholder.classList.remove('hidden');
+            lastMessageCount = 0;
+            return;
+        }
+
+        emptyPlaceholder.classList.add('hidden');
+        msgsContainer.classList.remove('hidden');
 
         // Only update if new messages arrived
         if (messages.length > lastMessageCount) {
-            const msgs = document.getElementById('chatMessages');
-            msgs.innerHTML = '';
-            messages.forEach(msg => {
+            // Lấy ra các tin nhắn mới từ mảng trả về
+            const newMessages = messages.slice(lastMessageCount);
+            
+            newMessages.forEach(msg => {
                 const type = msg.senderUsername === CURRENT_USER.username ? 'sent' : 'received';
-                appendMessage(msg, type, msgs);
+                appendMessage(msg, type, msgsContainer);
             });
+            
             lastMessageCount = messages.length;
-            if (scrollBottom) msgs.scrollTop = msgs.scrollHeight;
+            if (scrollBottom) msgsContainer.scrollTop = msgsContainer.scrollHeight;
         }
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        console.error("Lỗi tải chat:", e);
+        // If error persists, maybe show a small toast or warning
+    }
 }
 
 function appendMessage(message, type, container) {
@@ -77,12 +98,16 @@ function appendMessage(message, type, container) {
     const timeStr = formatMessageTime(message.timestamp);
     const div = document.createElement('div');
     div.className = `flex ${type === 'sent' ? 'justify-end' : 'justify-start'} mb-1`;
+    const imgHtml = message.imageUrl ? `<img src="${message.imageUrl}" class="w-full rounded-lg mb-2 cursor-pointer max-h-64 object-cover" onclick="window.open('${message.imageUrl}', '_blank')">` : '';
+    const contentHtml = message.content ? `<div>${message.content}</div>` : '';
+
     div.innerHTML = `
         <div class="max-w-xs lg:max-w-md px-4 py-2.5 rounded-2xl text-sm leading-relaxed
             ${type === 'sent'
             ? 'bg-primary text-white rounded-br-sm'
             : 'bg-white text-gray-800 shadow-sm rounded-bl-sm'}">
-            <div>${message.content}</div>
+            ${imgHtml}
+            ${contentHtml}
             <div class="text-xs mt-1 ${type === 'sent' ? 'text-red-200' : 'text-gray-400'}">${timeStr}</div>
         </div>`;
     msgs.appendChild(div);
@@ -91,21 +116,87 @@ function appendMessage(message, type, container) {
 
 function setupMessageForm() {
     const form = document.getElementById('messageForm');
+    const attachBtn = document.getElementById('chatAttachBtn');
+    const imageInput = document.getElementById('chatImageInput');
+    const previewContainer = document.getElementById('imagePreviewContainer');
+    const previewImg = document.getElementById('chatImagePreview');
+    const cancelPreviewBtn = document.getElementById('cancelImagePreview');
+
     if (!form) return;
+
+    if (attachBtn) {
+        attachBtn.addEventListener('click', () => imageInput.click());
+    }
+
+    if (imageInput) {
+        imageInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    previewContainer.classList.remove('hidden');
+                }
+                reader.readAsDataURL(this.files[0]);
+            }
+        });
+    }
+
+    if (cancelPreviewBtn) {
+        cancelPreviewBtn.addEventListener('click', () => {
+            imageInput.value = '';
+            previewContainer.classList.add('hidden');
+            previewImg.src = '';
+        });
+    }
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         if (!currentChatUser) return;
         const content = document.getElementById('messageInput').value.trim();
-        if (!content) return;
+        const hasImage = imageInput && imageInput.files && imageInput.files.length > 0;
+        
+        if (!content && !hasImage) return;
+
         try {
-            const formData = new FormData();
-            formData.append('action', 'send');
-            formData.append('receiverUsername', currentChatUser);
-            formData.append('content', content);
-            await fetch(CTX + '/ChatServlet', { method: 'POST', body: formData });
+            let selectedImageUrl = "";
+            
+            if (hasImage) {
+                const formData = new FormData();
+                formData.append('imageFile', imageInput.files[0]);
+                const uploadRes = await fetch(CTX + '/UploadChatImage', {
+                    method: 'POST',
+                    body: formData
+                });
+                const uploadResult = await uploadRes.json();
+                if (uploadResult.imageUrl) {
+                    selectedImageUrl = uploadResult.imageUrl;
+                } else {
+                    alert('Lỗi tải lên ảnh');
+                    return;
+                }
+            }
+
+            const params = new URLSearchParams();
+            params.append('action', 'send');
+            params.append('receiverUsername', currentChatUser);
+            params.append('content', content);
+            if (selectedImageUrl) {
+                params.append('imageUrl', selectedImageUrl);
+            }
+            
+            await apiFetch(CTX + '/ChatServlet', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params.toString() 
+            }, false);
+            
             document.getElementById('messageInput').value = '';
-            // Immediately show and refresh
+            if (cancelPreviewBtn) cancelPreviewBtn.click();
             await loadChatHistory(true);
-        } catch (e) { console.error(e); }
+        } catch (e) { 
+            console.error("Lỗi gửi tin nhắn:", e); 
+            alert('Có lỗi xảy ra khi gửi tin nhắn');
+        }
     });
 }
+

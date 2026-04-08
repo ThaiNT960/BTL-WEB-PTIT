@@ -1,119 +1,128 @@
 package com.ptit.socialchat.dao;
 
 import com.ptit.socialchat.model.User;
-import com.ptit.socialchat.util.DbConnection;
+import com.ptit.socialchat.model.Post;
+import com.ptit.socialchat.util.HibernateUtil;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
+import org.hibernate.query.Query;
 
-import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class UserDAO {
 
-    private User mapRow(ResultSet rs) throws SQLException {
-        User u = new User();
-        u.setId(rs.getLong("id"));
-        u.setUsername(rs.getString("username"));
-        u.setPassword(rs.getString("password"));
-        u.setFullName(rs.getString("full_name"));
-        u.setAvatar(rs.getString("avatar"));
-        u.setRole(rs.getString("role"));
-        return u;
-    }
-
     public User findByUsername(String username) {
-        String sql = "SELECT * FROM users WHERE username = ?";
-        try (Connection con = DbConnection.getConnection();
-                PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, username);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next())
-                return mapRow(rs);
-        } catch (SQLException e) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Query<User> query = session.createQuery("FROM User WHERE username = :username", User.class);
+            query.setParameter("username", username);
+            return query.uniqueResult();
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return null;
     }
 
     public User findById(long id) {
-        String sql = "SELECT * FROM users WHERE id = ?";
-        try (Connection con = DbConnection.getConnection();
-                PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setLong(1, id);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next())
-                return mapRow(rs);
-        } catch (SQLException e) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            return session.get(User.class, id);
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return null;
     }
 
     public List<User> findAll() {
-        List<User> list = new ArrayList<>();
-        String sql = "SELECT * FROM users ORDER BY id ASC";
-        try (Connection con = DbConnection.getConnection();
-                Statement st = con.createStatement();
-                ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next())
-                list.add(mapRow(rs));
-        } catch (SQLException e) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            return session.createQuery("FROM User ORDER BY id ASC", User.class).list();
+        } catch (Exception e) {
             e.printStackTrace();
         }
-        return list;
+        return new ArrayList<>();
     }
 
     public List<User> searchByKeyword(String keyword) {
-        List<User> list = new ArrayList<>();
-        String sql = "SELECT * FROM users WHERE LOWER(username) LIKE ? OR LOWER(full_name) LIKE ?";
-        String pattern = "%" + keyword.toLowerCase() + "%";
-        try (Connection con = DbConnection.getConnection();
-                PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, pattern);
-            ps.setString(2, pattern);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next())
-                list.add(mapRow(rs));
-        } catch (SQLException e) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            String hql = "FROM User WHERE lower(username) LIKE :keyword OR lower(fullName) LIKE :keyword";
+            Query<User> query = session.createQuery(hql, User.class);
+            query.setParameter("keyword", "%" + keyword.toLowerCase() + "%");
+            return query.list();
+        } catch (Exception e) {
             e.printStackTrace();
         }
-        return list;
+        return new ArrayList<>();
     }
 
     public void save(User user) {
-        String sql = "INSERT INTO users (username, password, full_name, role) VALUES (?, ?, ?, ?)";
-        try (Connection con = DbConnection.getConnection();
-                PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, user.getUsername());
-            ps.setString(2, user.getPassword());
-            ps.setString(3, user.getFullName());
-            ps.setString(4, user.getRole() != null ? user.getRole() : "ROLE_USER");
-            ps.executeUpdate();
-        } catch (SQLException e) {
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            if (user.getRole() == null || user.getRole().isEmpty()) {
+                user.setRole("ROLE_USER");
+            }
+            session.save(user);
+            transaction.commit();
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
             e.printStackTrace();
         }
     }
 
     public void update(User user) {
-        String sql = "UPDATE users SET full_name=?, avatar=?, password=? WHERE id=?";
-        try (Connection con = DbConnection.getConnection();
-                PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, user.getFullName());
-            ps.setString(2, user.getAvatar());
-            ps.setString(3, user.getPassword());
-            ps.setLong(4, user.getId());
-            ps.executeUpdate();
-        } catch (SQLException e) {
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            // In case the user is detached, fetch it and update OR update directly
+            User existingUser = session.get(User.class, user.getId());
+            if (existingUser != null) {
+                existingUser.setFullName(user.getFullName());
+                existingUser.setAvatar(user.getAvatar());
+                existingUser.setPassword(user.getPassword());
+                session.update(existingUser);
+            }
+            transaction.commit();
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
             e.printStackTrace();
         }
     }
 
     public void delete(long id) {
-        String sql = "DELETE FROM users WHERE id=?";
-        try (Connection con = DbConnection.getConnection();
-                PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setLong(1, id);
-            ps.executeUpdate();
-        } catch (SQLException e) {
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            User user = session.get(User.class, id);
+            if (user != null) {
+                // Triggers cascade delete on comments and likes associated with user's posts
+                List<Post> userPosts = session.createQuery("FROM Post WHERE user.id = :id", Post.class)
+                        .setParameter("id", id).list();
+                for (Post p : userPosts) {
+                    session.delete(p);
+                }
+
+                // Clear user dependencies that cascade type doesn't cover or to avoid FK issues
+                session.createQuery("DELETE FROM PostLike pl WHERE pl.user.id = :id").setParameter("id", id)
+                        .executeUpdate();
+                session.createQuery("DELETE FROM Comment c WHERE c.user.id = :id").setParameter("id", id)
+                        .executeUpdate();
+                session.createQuery("DELETE FROM Friendship f WHERE f.user.id = :id OR f.friend.id = :id")
+                        .setParameter("id", id).executeUpdate();
+                session.createQuery("DELETE FROM FriendRequest fr WHERE fr.sender.id = :id OR fr.receiver.id = :id")
+                        .setParameter("id", id).executeUpdate();
+                session.createQuery("DELETE FROM Message m WHERE m.sender.id = :id OR m.receiver.id = :id")
+                        .setParameter("id", id).executeUpdate();
+
+                session.delete(user);
+            }
+            transaction.commit();
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
             e.printStackTrace();
         }
     }

@@ -1,124 +1,190 @@
 package com.ptit.socialchat.dao;
 
 import com.ptit.socialchat.model.FriendRequest;
+import com.ptit.socialchat.model.Friendship;
 import com.ptit.socialchat.model.User;
-import com.ptit.socialchat.util.DbConnection;
+import com.ptit.socialchat.util.HibernateUtil;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
 
-import java.sql.*;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 public class FriendDAO {
 
     public List<User> getFriendsByUserId(long userId) {
-        List<User> list = new ArrayList<>();
-        String sql = "SELECT u.id, u.username, u.full_name, u.avatar " +
-                "FROM friends f JOIN users u ON f.friend_id = u.id " +
-                "WHERE f.user_id = ? ORDER BY u.full_name ASC";
-        try (Connection con = DbConnection.getConnection();
-                PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setLong(1, userId);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                User u = new User();
-                u.setId(rs.getLong(1));
-                u.setUsername(rs.getString(2));
-                u.setFullName(rs.getString(3));
-                u.setAvatar(rs.getString(4));
-                list.add(u);
-            }
-        } catch (SQLException e) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            return session.createQuery("SELECT f.friend FROM Friendship f WHERE f.user.id = :userId ORDER BY f.friend.fullName ASC", User.class)
+                    .setParameter("userId", userId)
+                    .list();
+        } catch (Exception e) {
             e.printStackTrace();
         }
-        return list;
+        return new ArrayList<>();
+    }
+
+    public boolean isFriend(long user1Id, long user2Id) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Long count = session.createQuery(
+                    "SELECT count(f) FROM Friendship f WHERE f.user.id = :u1 AND f.friend.id = :u2", Long.class)
+                    .setParameter("u1", user1Id)
+                    .setParameter("u2", user2Id)
+                    .uniqueResult();
+            return count != null && count > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean hasPendingRequest(long user1Id, long user2Id) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Long count = session.createQuery(
+                    "SELECT count(fr) FROM FriendRequest fr WHERE " +
+                            "((fr.sender.id = :u1 AND fr.receiver.id = :u2) OR " +
+                            "(fr.sender.id = :u2 AND fr.receiver.id = :u1)) AND " +
+                            "fr.status = 'PENDING'", Long.class)
+                    .setParameter("u1", user1Id)
+                    .setParameter("u2", user2Id)
+                    .uniqueResult();
+            return count != null && count > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean hasPendingRequestFromTo(long senderId, long receiverId) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Long count = session.createQuery(
+                    "SELECT count(fr) FROM FriendRequest fr WHERE " +
+                            "fr.sender.id = :s AND fr.receiver.id = :r AND fr.status = 'PENDING'", Long.class)
+                    .setParameter("s", senderId)
+                    .setParameter("r", receiverId)
+                    .uniqueResult();
+            return count != null && count > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
     public void addFriendship(long userId, long friendId) {
-        String sql = "INSERT INTO friends (user_id, friend_id, created_at) VALUES (?, ?, NOW())";
-        try (Connection con = DbConnection.getConnection();
-                PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setLong(1, userId);
-            ps.setLong(2, friendId);
-            ps.executeUpdate();
-        } catch (SQLException e) {
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            User user = session.get(User.class, userId);
+            User friend = session.get(User.class, friendId);
+            if (user != null && friend != null) {
+                // Add two-way friendship
+                Friendship f1 = new Friendship(user, friend);
+                Friendship f2 = new Friendship(friend, user);
+                session.save(f1);
+                session.save(f2);
+            }
+            transaction.commit();
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
             e.printStackTrace();
         }
     }
 
     public List<FriendRequest> getPendingRequests(long receiverId) {
-        List<FriendRequest> list = new ArrayList<>();
-        String sql = "SELECT fr.id, fr.status, fr.created_at, " +
-                "u.id, u.username, u.full_name " +
-                "FROM friend_requests fr JOIN users u ON fr.sender_id = u.id " +
-                "WHERE fr.receiver_id = ? AND fr.status = 'PENDING' ORDER BY fr.created_at DESC";
-        try (Connection con = DbConnection.getConnection();
-                PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setLong(1, receiverId);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                FriendRequest req = new FriendRequest();
-                req.setId(rs.getLong(1));
-                req.setStatus(rs.getString(2));
-                Timestamp ts = rs.getTimestamp(3);
-                req.setCreatedAt(ts != null ? ts.toLocalDateTime().toString() : "");
-                User sender = new User();
-                sender.setId(rs.getLong(4));
-                sender.setUsername(rs.getString(5));
-                sender.setFullName(rs.getString(6));
-                req.setSender(sender);
-                list.add(req);
-            }
-        } catch (SQLException e) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            return session.createQuery("FROM FriendRequest fr JOIN FETCH fr.sender WHERE fr.receiver.id = :receiverId AND fr.status = 'PENDING' ORDER BY fr.createdAt DESC", FriendRequest.class)
+                    .setParameter("receiverId", receiverId)
+                    .list();
+        } catch (Exception e) {
             e.printStackTrace();
         }
-        return list;
+        return new ArrayList<>();
     }
 
     public FriendRequest findRequestById(long requestId) {
-        String sql = "SELECT fr.id, fr.status, fr.sender_id, fr.receiver_id " +
-                "FROM friend_requests fr WHERE fr.id = ?";
-        try (Connection con = DbConnection.getConnection();
-                PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setLong(1, requestId);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                FriendRequest req = new FriendRequest();
-                req.setId(rs.getLong(1));
-                req.setStatus(rs.getString(2));
-                User sender = new User();
-                sender.setId(rs.getLong(3));
-                req.setSender(sender);
-                User receiver = new User();
-                receiver.setId(rs.getLong(4));
-                req.setReceiver(receiver);
-                return req;
-            }
-        } catch (SQLException e) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            return session.createQuery("FROM FriendRequest fr JOIN FETCH fr.sender JOIN FETCH fr.receiver WHERE fr.id = :requestId", FriendRequest.class)
+                    .setParameter("requestId", requestId)
+                    .uniqueResult();
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return null;
     }
 
     public void sendRequest(long senderId, long receiverId) {
-        String sql = "INSERT INTO friend_requests (sender_id, receiver_id, status, created_at) VALUES (?, ?, 'PENDING', NOW())";
-        try (Connection con = DbConnection.getConnection();
-                PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setLong(1, senderId);
-            ps.setLong(2, receiverId);
-            ps.executeUpdate();
-        } catch (SQLException e) {
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            User sender = session.get(User.class, senderId);
+            User receiver = session.get(User.class, receiverId);
+            if (sender != null && receiver != null) {
+                FriendRequest req = new FriendRequest();
+                req.setSender(sender);
+                req.setReceiver(receiver);
+                req.setStatus("PENDING");
+                req.setCreatedAt(LocalDateTime.now());
+                session.save(req);
+            }
+            transaction.commit();
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
             e.printStackTrace();
         }
     }
 
     public void updateRequestStatus(long requestId, String status) {
-        String sql = "UPDATE friend_requests SET status=? WHERE id=?";
-        try (Connection con = DbConnection.getConnection();
-                PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, status);
-            ps.setLong(2, requestId);
-            ps.executeUpdate();
-        } catch (SQLException e) {
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            FriendRequest req = session.get(FriendRequest.class, requestId);
+            if (req != null) {
+                req.setStatus(status);
+                session.update(req);
+            }
+            transaction.commit();
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            e.printStackTrace();
+        }
+    }
+
+    public void deleteFriendship(long user1Id, long user2Id) {
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            session.createQuery("DELETE FROM Friendship f WHERE (f.user.id = :u1 AND f.friend.id = :u2) OR (f.user.id = :u2 AND f.friend.id = :u1)")
+                   .setParameter("u1", user1Id)
+                   .setParameter("u2", user2Id)
+                   .executeUpdate();
+            transaction.commit();
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            e.printStackTrace();
+        }
+    }
+
+    public void cancelFriendRequest(long senderId, long receiverId) {
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            session.createQuery("DELETE FROM FriendRequest fr WHERE fr.sender.id = :senderId AND fr.receiver.id = :receiverId AND fr.status = 'PENDING'")
+                   .setParameter("senderId", senderId)
+                   .setParameter("receiverId", receiverId)
+                   .executeUpdate();
+            transaction.commit();
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
             e.printStackTrace();
         }
     }

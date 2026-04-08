@@ -79,20 +79,37 @@ public class AdminServlet extends HttpServlet {
                 String username = req.getParameter("username");
                 String fullName = req.getParameter("fullName");
                 String password = req.getParameter("password");
-                if (userDAO.findByUsername(username) == null) {
-                    User u = new User();
-                    u.setUsername(username);
-                    u.setFullName(fullName);
-                    u.setPassword(password);
-                    u.setRole("ROLE_USER");
-                    userDAO.save(u);
-                }
                 resp.setContentType("application/json;charset=UTF-8");
-                resp.getWriter().write("{\"status\":\"ok\"}");
+
+                try {
+                    if (username == null || username.trim().isEmpty() || password == null || password.trim().isEmpty() || password.length() < 6) {
+                        resp.setStatus(400);
+                        resp.getWriter().write("{\"error\":\"Tên đăng nhập hoặc mật khẩu không hợp lệ.\"}");
+                        return;
+                    }
+
+                    if (userDAO.findByUsername(username.trim()) == null) {
+                        User u = new User();
+                        u.setUsername(username.trim());
+                        u.setFullName(fullName != null ? fullName.trim() : username.trim());
+                        u.setPassword(org.mindrot.jbcrypt.BCrypt.hashpw(password, org.mindrot.jbcrypt.BCrypt.gensalt(12)));
+                        u.setRole("ROLE_USER");
+                        userDAO.save(u);
+                        resp.getWriter().write("{\"status\":\"ok\"}");
+                    } else {
+                        resp.setStatus(400);
+                        resp.getWriter().write("{\"error\":\"Tên đăng nhập đã tồn tại.\"}");
+                    }
+                } catch (Exception e) {
+                    resp.setStatus(500);
+                    resp.getWriter().write("{\"error\":\"Lỗi server nội bộ.\"}");
+                }
                 break;
             }
             default:
-                resp.sendError(400, "Unknown action");
+                resp.setStatus(400);
+                resp.setContentType("application/json;charset=UTF-8");
+                resp.getWriter().write("{\"error\":\"Unknown action\"}");
         }
     }
 }

@@ -2,10 +2,9 @@ package com.ptit.socialchat.servlet;
 
 import com.google.gson.Gson;
 import com.ptit.socialchat.dao.FriendDAO;
-import com.ptit.socialchat.dao.MessageDAO;
-import com.ptit.socialchat.dao.UserDAO;
 import com.ptit.socialchat.model.Message;
 import com.ptit.socialchat.model.User;
+import com.ptit.socialchat.service.ChatService;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.*;
@@ -14,9 +13,8 @@ import java.util.*;
 
 public class ChatServlet extends HttpServlet {
 
-    private final MessageDAO messageDAO = new MessageDAO();
+    private final ChatService chatService = new ChatService();
     private final FriendDAO friendDAO = new FriendDAO();
-    private final UserDAO userDAO = new UserDAO();
     private final Gson gson = new Gson();
 
     @Override
@@ -29,26 +27,30 @@ public class ChatServlet extends HttpServlet {
         if ("history".equals(action)) {
             // Return JSON chat history between current user and another user
             String otherUsername = req.getParameter("otherUser");
-            User otherUser = userDAO.findByUsername(otherUsername);
-            if (otherUser == null) {
+            try {
+                List<Message> history = chatService.getChatHistory(currentUserId, otherUsername);
+                List<Map<String, Object>> result = new ArrayList<>();
+                for (Message msg : history) {
+                    Map<String, Object> map = new LinkedHashMap<>();
+                    map.put("id", msg.getId());
+                    map.put("content", msg.getContent());
+                    map.put("timestamp", msg.getTimestamp() != null ? msg.getTimestamp().toString() : "");
+                    map.put("senderUsername", msg.getSender().getUsername());
+                    map.put("senderFullName", msg.getSender().getFullName());
+                    map.put("receiverUsername", msg.getReceiver().getUsername());
+                    map.put("imageUrl", msg.getImageUrl() != null ? msg.getImageUrl() : "");
+                    result.add(map);
+                }
                 resp.setContentType("application/json;charset=UTF-8");
-                resp.getWriter().write("[]");
-                return;
+                resp.getWriter().write(gson.toJson(result));
+            } catch (IllegalArgumentException e) {
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                resp.setContentType("application/json;charset=UTF-8");
+                // Import Collections dynamically if needed, but easier to use map or simple JSON string
+                resp.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
+            } catch (Exception e) {
+                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             }
-            List<Message> history = messageDAO.getChatHistory(currentUserId, otherUser.getId());
-            List<Map<String, Object>> result = new ArrayList<>();
-            for (Message msg : history) {
-                Map<String, Object> map = new LinkedHashMap<>();
-                map.put("id", msg.getId());
-                map.put("content", msg.getContent());
-                map.put("timestamp", msg.getTimestamp());
-                map.put("senderUsername", msg.getSender().getUsername());
-                map.put("senderFullName", msg.getSender().getFullName());
-                map.put("receiverUsername", msg.getReceiver().getUsername());
-                result.add(map);
-            }
-            resp.setContentType("application/json;charset=UTF-8");
-            resp.getWriter().write(gson.toJson(result));
             return;
         }
 
@@ -62,24 +64,28 @@ public class ChatServlet extends HttpServlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
         HttpSession session = req.getSession(false);
+        if (session == null || session.getAttribute("userId") == null) {
+            resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
         long currentUserId = (long) session.getAttribute("userId");
         String action = req.getParameter("action");
 
         if ("send".equals(action)) {
             String receiverUsername = req.getParameter("receiverUsername");
             String content = req.getParameter("content");
-            if (content == null || content.trim().isEmpty() || receiverUsername == null) {
-                resp.sendError(400, "Missing parameters");
-                return;
+            String imageUrl = req.getParameter("imageUrl");
+            try {
+                chatService.sendMessage(currentUserId, receiverUsername, content, imageUrl);
+                resp.setContentType("application/json;charset=UTF-8");
+                resp.getWriter().write("{\"status\":\"ok\"}");
+            } catch (IllegalArgumentException e) {
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                resp.setContentType("application/json;charset=UTF-8");
+                resp.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
+            } catch (Exception e) {
+                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             }
-            User receiver = userDAO.findByUsername(receiverUsername);
-            if (receiver == null) {
-                resp.sendError(404, "User not found");
-                return;
-            }
-            messageDAO.save(currentUserId, receiver.getId(), content.trim());
-            resp.setContentType("application/json;charset=UTF-8");
-            resp.getWriter().write("{\"status\":\"ok\"}");
         } else {
             resp.sendError(400, "Unknown action");
         }

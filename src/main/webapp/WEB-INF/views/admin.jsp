@@ -27,9 +27,6 @@
                     <span class="font-semibold text-primary text-sm"><i class="fas fa-shield-alt mr-1"></i>Bảng Quản
                         Trị</span>
                     <div class="flex items-center gap-3">
-                        <a href="${pageContext.request.contextPath}/HomeServlet"
-                            class="text-sm text-gray-600 hover:text-primary"><i class="fas fa-home mr-1"></i>Trang
-                            chủ</a>
                         <a href="${pageContext.request.contextPath}/LogoutServlet"
                             class="text-sm text-gray-600 hover:text-primary"><i
                                 class="fas fa-sign-out-alt mr-1"></i>Đăng xuất</a>
@@ -117,6 +114,42 @@
                             </table>
                         </div>
                     </div>
+
+                    <!-- Posts Table -->
+                    <div class="bg-white rounded-2xl shadow-sm p-5 mt-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="font-semibold text-gray-900"><i class="fas fa-file-alt text-primary mr-2"></i>Danh sách bài viết</h2>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="border-b border-gray-100">
+                                        <th class="text-left text-xs font-semibold text-gray-400 pb-3 pr-4">ID</th>
+                                        <th class="text-left text-xs font-semibold text-gray-400 pb-3 pr-4">Tác giả</th>
+                                        <th class="text-left text-xs font-semibold text-gray-400 pb-3 pr-4">Nội dung</th>
+                                        <th class="text-left text-xs font-semibold text-gray-400 pb-3 pr-4">Thời gian</th>
+                                        <th class="text-left text-xs font-semibold text-gray-400 pb-3">Hành động</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="postsTableBody">
+                                    <c:forEach var="p" items="${posts}">
+                                        <tr class="border-b border-gray-50 hover:bg-gray-50" id="post-row-${p.id}">
+                                            <td class="py-3 pr-4 text-sm text-gray-500">${p.id}</td>
+                                            <td class="py-3 pr-4 text-sm font-medium text-gray-900">${p.user.fullName}</td>
+                                            <td class="py-3 pr-4 text-sm text-gray-600 max-w-xs truncate">${p.content}</td>
+                                            <td class="py-3 pr-4 text-sm text-gray-500">${p.createdAt}</td>
+                                            <td class="py-3">
+                                                <button onclick="deletePost(${p.id})"
+                                                    class="text-xs text-gray-400 hover:text-red-500 transition px-2 py-1 rounded-lg hover:bg-red-50">
+                                                    <i class="fas fa-trash"></i> Xóa
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </c:forEach>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </main>
 
@@ -146,17 +179,41 @@
                 var CTX = '${pageContext.request.contextPath}';
 
                 function deleteUser(userId) {
-                    if (!confirm('Xóa người dùng này?')) return;
-                    var form = new FormData();
-                    form.append('action', 'deleteUser');
-                    form.append('userId', userId);
-                    fetch(CTX + '/AdminServlet', { method: 'POST', body: form })
-                        .then(r => r.json())
-                        .then(() => {
-                            document.getElementById('user-row-' + userId).remove();
-                            var stat = document.getElementById('statUsers');
-                            stat.textContent = parseInt(stat.textContent) - 1;
-                        }).catch(e => console.error(e));
+                    if (!confirm('Xóa người dùng này? Thao tác này sẽ xóa mọi dữ liệu liên quan!')) return;
+                    var params = new URLSearchParams();
+                    params.append('action', 'deleteUser');
+                    params.append('userId', userId);
+                    fetch(CTX + '/AdminServlet', { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: params.toString() 
+                    }).then(r => r.json()).then(data => {
+                        if(data.error) {
+                            alert(data.error);
+                            return;
+                        }
+                        document.getElementById('user-row-' + userId).remove();
+                        var stat = document.getElementById('statUsers');
+                        stat.textContent = parseInt(stat.textContent) - 1;
+                    }).catch(e => { console.error(e); alert('Lỗi xóa') });
+                }
+
+                function deletePost(postId) {
+                    if (!confirm('Xóa bài viết này?')) return;
+                    var params = new URLSearchParams();
+                    params.append('action', 'deletePost');
+                    params.append('postId', postId);
+                    fetch(CTX + '/AdminServlet', { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: params.toString() 
+                    }).then(r => r.json()).then(data => {
+                        if(data.error) {
+                            alert(data.error);
+                            return;
+                        }
+                        document.getElementById('post-row-' + postId).remove();
+                    }).catch(e => { console.error(e); alert('Lỗi xóa') });
                 }
 
                 function createUser() {
@@ -164,17 +221,28 @@
                     var fullName = document.getElementById('newFullName').value.trim();
                     var password = document.getElementById('newPassword').value.trim();
                     if (!username || !fullName || !password) { alert('Vui lòng điền đầy đủ'); return; }
-                    var form = new FormData();
-                    form.append('action', 'createUser');
-                    form.append('username', username);
-                    form.append('fullName', fullName);
-                    form.append('password', password);
-                    fetch(CTX + '/AdminServlet', { method: 'POST', body: form })
-                        .then(r => r.json())
-                        .then(() => {
-                            document.getElementById('addUserModal').classList.add('hidden');
-                            location.reload();
-                        }).catch(() => alert('Lỗi khi tạo'));
+                    var params = new URLSearchParams();
+                    params.append('action', 'createUser');
+                    params.append('username', username);
+                    params.append('fullName', fullName);
+                    params.append('password', password);
+                    fetch(CTX + '/AdminServlet', { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: params.toString() 
+                    })
+                    .then(async r => {
+                        if (!r.ok) {
+                            const data = await r.json();
+                            throw new Error(data.error || 'Server error');
+                        }
+                        return r.json();
+                    })
+                    .then(data => {
+                        document.getElementById('addUserModal').classList.add('hidden');
+                        alert('Tạo người dùng thành công!');
+                        location.reload();
+                    }).catch(err => alert(err.message));
                 }
             </script>
         </body>

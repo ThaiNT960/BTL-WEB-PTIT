@@ -1,11 +1,29 @@
 package com.ptit.socialchat.model;
 
+import javax.persistence.*;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "comments")
 public class Comment {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
+    
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
-    private String createdAt;
+    
+    @Column(name = "created_at")
+    private String createdAt = LocalDateTime.now().toString();
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
-    private long postId;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "post_id", nullable = false)
+    private Post post;
 
     public Comment() {
     }
@@ -42,11 +60,11 @@ public class Comment {
         this.user = user;
     }
 
-    public long getPostId() {
-        return postId;
+    public Post getPost() {
+        return post;
     }
 
-    public void setPostId(long postId) {
-        this.postId = postId;
+    public void setPost(Post post) {
+        this.post = post;
     }
 }

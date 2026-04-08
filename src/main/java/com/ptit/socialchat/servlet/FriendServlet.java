@@ -2,9 +2,11 @@ package com.ptit.socialchat.servlet;
 
 import com.google.gson.Gson;
 import com.ptit.socialchat.dao.FriendDAO;
-import com.ptit.socialchat.dao.UserDAO;
 import com.ptit.socialchat.model.FriendRequest;
 import com.ptit.socialchat.model.User;
+import java.util.List;
+import com.ptit.socialchat.service.FriendService;
+import java.util.Collections;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.*;
@@ -14,18 +16,22 @@ import java.util.*;
 public class FriendServlet extends HttpServlet {
 
     private final FriendDAO friendDAO = new FriendDAO();
-    private final UserDAO userDAO = new UserDAO();
+    private final FriendService friendService = new FriendService();
     private final Gson gson = new Gson();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
         HttpSession session = req.getSession(false);
+        if (session == null || session.getAttribute("userId") == null) {
+            resp.sendRedirect(req.getContextPath() + "/login");
+            return;
+        }
+
         long currentUserId = (long) session.getAttribute("userId");
         String type = req.getParameter("type");
 
         if ("friends".equals(type)) {
-            // Return JSON list of friends
             List<User> friends = friendDAO.getFriendsByUserId(currentUserId);
             List<Map<String, Object>> result = new ArrayList<>();
             for (User f : friends) {
@@ -42,7 +48,6 @@ public class FriendServlet extends HttpServlet {
         }
 
         if ("requests".equals(type)) {
-            // Return JSON list of pending requests
             List<FriendRequest> requests = friendDAO.getPendingRequests(currentUserId);
             List<Map<String, Object>> result = new ArrayList<>();
             for (FriendRequest req2 : requests) {
@@ -51,7 +56,7 @@ public class FriendServlet extends HttpServlet {
                 map.put("senderUsername", req2.getSender().getUsername());
                 map.put("senderFullName", req2.getSender().getFullName());
                 map.put("status", req2.getStatus());
-                map.put("createdAt", req2.getCreatedAt());
+                map.put("createdAt", req2.getCreatedAt() != null ? req2.getCreatedAt().toString() : "");
                 result.add(map);
             }
             resp.setContentType("application/json;charset=UTF-8");
@@ -71,44 +76,107 @@ public class FriendServlet extends HttpServlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
         HttpSession session = req.getSession(false);
+        if (session == null || session.getAttribute("userId") == null) {
+            resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User not logged in");
+            return;
+        }
+
         long currentUserId = (long) session.getAttribute("userId");
         String action = req.getParameter("action");
 
-        if (action == null)
-            action = "";
+        if (action == null) {
 
-        switch (action) {
-            case "request": {
-                String receiverUsername = req.getParameter("receiverUsername");
-                User receiver = userDAO.findByUsername(receiverUsername);
-                if (receiver != null) {
-                    friendDAO.sendRequest(currentUserId, receiver.getId());
+            action = "";
+        }
+
+        try {
+            switch (action) {
+                case "request": {
+                    String receiverUsername = req.getParameter("receiverUsername");
+                    try {
+                        friendService.sendFriendRequest(currentUserId, receiverUsername);
+                        resp.setContentType("application/json;charset=UTF-8");
+                        resp.getWriter().write("{\"status\":\"ok\"}");
+                    } catch (IllegalArgumentException e) {
+                        resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                        resp.setContentType("application/json;charset=UTF-8");
+                        resp.getWriter().write(gson.toJson(Collections.singletonMap("error", e.getMessage())));
+                    }
+                    break;
                 }
-                resp.setContentType("application/json;charset=UTF-8");
-                resp.getWriter().write("{\"status\":\"ok\"}");
-                break;
-            }
-            case "accept": {
-                long requestId = Long.parseLong(req.getParameter("requestId"));
-                FriendRequest fr = friendDAO.findRequestById(requestId);
-                if (fr != null) {
-                    friendDAO.updateRequestStatus(requestId, "ACCEPTED");
-                    friendDAO.addFriendship(fr.getSender().getId(), fr.getReceiver().getId());
-                    friendDAO.addFriendship(fr.getReceiver().getId(), fr.getSender().getId());
+                case "accept": {
+                    String reqIdStr = req.getParameter("requestId");
+                    try {
+                        long requestId = Long.parseLong(reqIdStr != null ? reqIdStr : "0");
+                        friendService.acceptFriendRequest(requestId, currentUserId);
+                        resp.setContentType("application/json;charset=UTF-8");
+                        resp.getWriter().write("{\"status\":\"ok\"}");
+                    } catch (Exception e) {
+                        resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                        resp.setContentType("application/json;charset=UTF-8");
+                        resp.getWriter().write(gson.toJson(Collections.singletonMap("error", e.getMessage())));
+                    }
+                    break;
                 }
-                resp.setContentType("application/json;charset=UTF-8");
-                resp.getWriter().write("{\"status\":\"ok\"}");
-                break;
+                case "accept_by_username": {
+                    String senderUsername = req.getParameter("senderUsername");
+                    try {
+                        friendService.acceptFriendRequestByUsername(currentUserId, senderUsername);
+                        resp.setContentType("application/json;charset=UTF-8");
+                        resp.getWriter().write("{\"status\":\"ok\"}");
+                    } catch (Exception e) {
+                        resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                        resp.setContentType("application/json;charset=UTF-8");
+                        resp.getWriter().write(gson.toJson(Collections.singletonMap("error", e.getMessage())));
+                    }
+                    break;
+                }
+                case "reject": {
+                    String reqIdStr = req.getParameter("requestId");
+                    try {
+                        long requestId = Long.parseLong(reqIdStr != null ? reqIdStr : "0");
+                        friendService.rejectFriendRequest(requestId, currentUserId);
+                        resp.setContentType("application/json;charset=UTF-8");
+                        resp.getWriter().write("{\"status\":\"ok\"}");
+                    } catch (Exception e) {
+                        resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                        resp.setContentType("application/json;charset=UTF-8");
+                        resp.getWriter().write(gson.toJson(Collections.singletonMap("error", e.getMessage())));
+                    }
+                    break;
+                }
+                case "unfriend": {
+                    String targetUsername = req.getParameter("targetUsername");
+                    try {
+                        friendService.unfriend(currentUserId, targetUsername);
+                        resp.setContentType("application/json;charset=UTF-8");
+                        resp.getWriter().write("{\"status\":\"ok\"}");
+                    } catch (Exception e) {
+                        resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                        resp.setContentType("application/json;charset=UTF-8");
+                        resp.getWriter().write(gson.toJson(Collections.singletonMap("error", e.getMessage())));
+                    }
+                    break;
+                }
+                case "cancel": {
+                    String targetUsername = req.getParameter("targetUsername");
+                    try {
+                        friendService.cancelRequest(currentUserId, targetUsername);
+                        resp.setContentType("application/json;charset=UTF-8");
+                        resp.getWriter().write("{\"status\":\"ok\"}");
+                    } catch (Exception e) {
+                        resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                        resp.setContentType("application/json;charset=UTF-8");
+                        resp.getWriter().write(gson.toJson(Collections.singletonMap("error", e.getMessage())));
+                    }
+                    break;
+                }
+                default:
+                    resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Unknown action");
             }
-            case "reject": {
-                long requestId = Long.parseLong(req.getParameter("requestId"));
-                friendDAO.updateRequestStatus(requestId, "REJECTED");
-                resp.setContentType("application/json;charset=UTF-8");
-                resp.getWriter().write("{\"status\":\"ok\"}");
-                break;
-            }
-            default:
-                resp.sendError(400, "Unknown action");
+        } catch (Exception e) {
+            e.printStackTrace();
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Server Error");
         }
     }
 }

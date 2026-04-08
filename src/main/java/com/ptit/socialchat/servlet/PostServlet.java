@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.ptit.socialchat.dao.PostDAO;
 import com.ptit.socialchat.model.Comment;
 import com.ptit.socialchat.model.Post;
+import com.ptit.socialchat.service.PostService;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.*;
@@ -13,6 +14,7 @@ import java.util.*;
 public class PostServlet extends HttpServlet {
 
     private final PostDAO postDAO = new PostDAO();
+    private final PostService postService = new PostService();
     private final Gson gson = new Gson();
 
     @Override
@@ -35,7 +37,7 @@ public class PostServlet extends HttpServlet {
             map.put("id", post.getId());
             map.put("content", post.getContent());
             map.put("imageUrl", post.getImageUrl());
-            map.put("createdAt", post.getCreatedAt());
+            map.put("createdAt", post.getCreatedAt() != null ? post.getCreatedAt().toString() : "");
             map.put("username", post.getUser().getUsername());
             map.put("userFullName", post.getUser().getFullName());
             map.put("avatar", post.getUser().getAvatar());
@@ -47,9 +49,11 @@ public class PostServlet extends HttpServlet {
                 Map<String, Object> cm = new LinkedHashMap<>();
                 cm.put("id", c.getId());
                 cm.put("content", c.getContent());
-                cm.put("createdAt", c.getCreatedAt());
+                String cCreatedAt = c.getCreatedAt() != null ? c.getCreatedAt().toString() : "";
+                cm.put("createdAt", cCreatedAt);
                 cm.put("username", c.getUser().getUsername());
                 cm.put("userFullName", c.getUser().getFullName());
+                cm.put("avatar", c.getUser().getAvatar());
                 commentList.add(cm);
             }
             map.put("comments", commentList);
@@ -92,52 +96,68 @@ public class PostServlet extends HttpServlet {
             throws IOException {
         String content = req.getParameter("content");
         String imageUrl = req.getParameter("imageUrl");
-        if (content == null || content.trim().isEmpty()) {
-            resp.sendError(400, "Content cannot be empty");
-            return;
+        System.out.println("[PostServlet] handleCreatePost called: userId=" + userId + ", content=" + content + ", imageUrl=" + imageUrl);
+        try {
+            postService.createPost(userId, content, imageUrl);
+            resp.setContentType("application/json;charset=UTF-8");
+            resp.getWriter().write("{\"status\":\"ok\"}");
+            System.out.println("[PostServlet] Post created successfully");
+        } catch (IllegalArgumentException e) {
+            System.err.println("[PostServlet] Validation error: " + e.getMessage());
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            resp.setContentType("application/json;charset=UTF-8");
+            resp.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
+        } catch (Exception e) {
+            System.err.println("[PostServlet] Unexpected error creating post: " + e.getMessage());
+            e.printStackTrace();
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            resp.setContentType("application/json;charset=UTF-8");
+            resp.getWriter().write("{\"error\": \"Lỗi hệ thống khi đăng bài: " + e.getMessage() + "\"}");
         }
-        postDAO.save(content.trim(), (imageUrl != null && !imageUrl.trim().isEmpty()) ? imageUrl.trim() : null, userId);
-        resp.setContentType("application/json;charset=UTF-8");
-        resp.getWriter().write("{\"status\":\"ok\"}");
     }
 
     private void handleAddComment(HttpServletRequest req, HttpServletResponse resp, long userId)
             throws IOException {
         long postId = Long.parseLong(req.getParameter("postId"));
         String content = req.getParameter("content");
-        if (content == null || content.trim().isEmpty()) {
-            resp.sendError(400, "Content cannot be empty");
-            return;
+        try {
+            postService.addComment(userId, postId, content);
+            resp.setContentType("application/json;charset=UTF-8");
+            resp.getWriter().write("{\"status\":\"ok\"}");
+        } catch (IllegalArgumentException e) {
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            resp.setContentType("application/json;charset=UTF-8");
+            resp.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
         }
-        postDAO.addComment(postId, content.trim(), userId);
-        resp.setContentType("application/json;charset=UTF-8");
-        resp.getWriter().write("{\"status\":\"ok\"}");
     }
 
     private void handleToggleLike(HttpServletRequest req, HttpServletResponse resp, long userId)
             throws IOException {
         long postId = Long.parseLong(req.getParameter("postId"));
-        boolean liked = postDAO.toggleLike(postId, userId);
-        int likeCount = postDAO.getLikeCount(postId);
-        resp.setContentType("application/json;charset=UTF-8");
-        resp.getWriter().write("{\"liked\":" + liked + ",\"likeCount\":" + likeCount + "}");
+        try {
+            boolean liked = postService.toggleLike(userId, postId);
+            int likeCount = postDAO.getLikeCount(postId);
+            resp.setContentType("application/json;charset=UTF-8");
+            resp.getWriter().write("{\"liked\":" + liked + ",\"likeCount\":" + likeCount + "}");
+        } catch (IllegalArgumentException e) {
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            resp.setContentType("application/json;charset=UTF-8");
+            resp.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
+        }
     }
 
     private void handleDeletePost(HttpServletRequest req, HttpServletResponse resp,
             long currentUserId, HttpSession session) throws IOException {
         long postId = Long.parseLong(req.getParameter("postId"));
         String role = (String) session.getAttribute("role");
-        Post post = postDAO.findById(postId);
-        if (post == null) {
-            resp.sendError(404, "Post not found");
-            return;
+        try {
+            postService.deletePost(currentUserId, postId, role);
+            resp.setContentType("application/json;charset=UTF-8");
+            resp.getWriter().write("{\"status\":\"ok\"}");
+        } catch (IllegalArgumentException e) {
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            resp.setContentType("application/json;charset=UTF-8");
+            resp.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
         }
-        if (post.getUser().getId() != currentUserId && !"ROLE_ADMIN".equals(role)) {
-            resp.sendError(403, "Not authorized");
-            return;
-        }
-        postDAO.delete(postId);
-        resp.setContentType("application/json;charset=UTF-8");
-        resp.getWriter().write("{\"status\":\"ok\"}");
     }
 }

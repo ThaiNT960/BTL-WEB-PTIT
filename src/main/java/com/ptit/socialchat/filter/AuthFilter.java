@@ -19,6 +19,23 @@ public class AuthFilter implements Filter {
         if (!loggedIn) {
             res.sendRedirect(req.getContextPath() + "/LoginServlet");
         } else {
+            String role = (String) session.getAttribute("role");
+            String path = req.getServletPath();
+
+            if ("/AdminServlet".equals(path) && !"ROLE_ADMIN".equals(role)) {
+                res.sendRedirect(req.getContextPath() + "/HomeServlet");
+                return;
+            }
+
+            if ("ROLE_ADMIN".equals(role)) {
+                if ("/HomeServlet".equals(path) || "/FriendServlet".equals(path) || 
+                    "/ChatServlet".equals(path) || "/ProfileServlet".equals(path) || 
+                    "/SearchServlet".equals(path)) {
+                    res.sendRedirect(req.getContextPath() + "/AdminServlet");
+                    return;
+                }
+            }
+
             chain.doFilter(request, response);
         }
     }
