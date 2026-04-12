@@ -4,7 +4,7 @@ import javax.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "friends")
+@Table(name = "friends", uniqueConstraints = {@UniqueConstraint(columnNames = {"user_id", "friend_id"})})
 public class Friendship {
 
     @Id

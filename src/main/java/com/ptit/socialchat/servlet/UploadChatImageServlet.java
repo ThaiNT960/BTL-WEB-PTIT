@@ -17,7 +17,7 @@ public class UploadChatImageServlet extends HttpServlet {
         HttpSession session = req.getSession(false);
         if (session == null || session.getAttribute("userId") == null) {
             resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            resp.getWriter().write("{\"error\":\"Unauthorized\"}");
+            resp.getWriter().write(new com.google.gson.Gson().toJson(java.util.Collections.singletonMap("error", "Unauthorized")));
             return;
         }
 
@@ -26,15 +26,18 @@ public class UploadChatImageServlet extends HttpServlet {
             if (imagePart != null && imagePart.getSize() > 0) {
                 String imageUrl = FileUtil.saveUploadedFile(req, imagePart, "chats");
                 resp.setContentType("application/json;charset=UTF-8");
-                resp.getWriter().write("{\"status\":\"ok\",\"imageUrl\":\"" + imageUrl + "\"}");
+                java.util.Map<String, String> res = new java.util.HashMap<>();
+                res.put("status", "ok");
+                res.put("imageUrl", imageUrl);
+                resp.getWriter().write(new com.google.gson.Gson().toJson(res));
             } else {
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                resp.getWriter().write("{\"error\":\"No image file provided\"}");
+                resp.getWriter().write(new com.google.gson.Gson().toJson(java.util.Collections.singletonMap("error", "No image file provided")));
             }
         } catch (Exception e) {
             e.printStackTrace();
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            resp.getWriter().write("{\"error\":\"Server error during upload\"}");
+            resp.getWriter().write(new com.google.gson.Gson().toJson(java.util.Collections.singletonMap("error", "Server error during upload")));
         }
     }
 }

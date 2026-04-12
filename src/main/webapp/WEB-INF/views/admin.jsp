@@ -13,7 +13,13 @@
             <link rel="stylesheet" href="${pageContext.request.contextPath}/css/app.css">
         </head>
 
-        <body class="bg-gray-100 font-sans text-gray-900">
+        <body class="bg-gray-100 font-sans text-gray-900"
+              data-username="<c:out value='${sessionScope.username}'/>"
+              data-fullname="<c:out value='${sessionScope.fullName}'/>"
+              data-avatar="<c:out value='${sessionScope.avatar}'/>"
+              data-role="<c:out value='${sessionScope.role}'/>"
+              data-ctx="<c:out value='${pageContext.request.contextPath}'/>"
+              data-csrftoken="<c:out value='${sessionScope.csrfToken}'/>">
 
             <!-- NAVBAR -->
             <nav class="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm"
@@ -176,7 +182,7 @@
             </div>
 
             <script>
-                var CTX = '${pageContext.request.contextPath}';
+                // CTX is from body dataset
 
                 function deleteUser(userId) {
                     if (!confirm('Xóa người dùng này? Thao tác này sẽ xóa mọi dữ liệu liên quan!')) return;

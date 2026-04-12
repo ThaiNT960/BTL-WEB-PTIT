@@ -37,7 +37,13 @@
             }
         </style>
 
-        <body class="bg-gray-100 font-sans text-gray-900">
+        <body class="bg-gray-100 font-sans text-gray-900"
+              data-username="<c:out value='${sessionScope.username}'/>"
+              data-fullname="<c:out value='${sessionScope.fullName}'/>"
+              data-avatar="<c:out value='${sessionScope.avatar}'/>"
+              data-role="<c:out value='${sessionScope.role}'/>"
+              data-ctx="<c:out value='${pageContext.request.contextPath}'/>"
+              data-csrftoken="<c:out value='${sessionScope.csrfToken}'/>">
 
             <!-- NAVBAR -->
             <jsp:include page="/WEB-INF/views/layout/navbar.jsp">
@@ -53,6 +59,10 @@
                         <div class="w-80 flex-shrink-0 border-r border-gray-200 flex flex-col" style="height: 100%;">
                             <div class="p-4 border-b border-gray-100">
                                 <h2 class="font-semibold text-gray-900 text-sm">Tin nhắn</h2>
+                                <div class="mt-3 relative">
+                                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                                    <input type="text" id="friendSearchInput" placeholder="Tìm kiếm vòng kết nối..." class="w-full bg-gray-50 border border-gray-200 text-sm rounded-full pl-9 pr-4 py-2 focus:outline-none focus:border-primary focus:bg-white transition-colors">
+                                </div>
                             </div>
                             <div id="friendsList" class="flex-1 overflow-y-auto p-2">
                                 <c:choose>
@@ -64,8 +74,8 @@
                                     <c:otherwise>
                                         <c:forEach var="f" items="${friends}">
                                             <div class="chat-contact-item flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-gray-50 transition"
-                                                data-username="${f.username}" data-fullname="${f.fullName}"
-                                                onclick="selectChat('${f.username}', '${f.fullName}')">
+                                                data-username="${f.username}" data-fullname="${f.fullName}" data-avatar="${f.avatar != null ? f.avatar : ''}"
+                                                onclick="selectChat('${f.username}', '${f.fullName}', '${f.avatar != null ? f.avatar : ''}')">
                                                 <div class="relative flex-shrink-0">
                                                     <c:choose>
                                                         <c:when test="${not empty f.avatar}">
@@ -88,9 +98,6 @@
                                                             </div>
                                                         </c:otherwise>
                                                     </c:choose>
-                                                    <div
-                                                        class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full">
-                                                    </div>
                                                 </div>
                                                 <div class="flex-1 min-w-0">
                                                     <p class="font-semibold text-sm text-gray-900 truncate">
@@ -108,12 +115,18 @@
                             <!-- Chat header -->
                             <div id="chatWindowHeader"
                                 class="hidden px-5 py-3 bg-white border-b border-gray-200 flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm"
-                                    id="chatPartnerAvatar">?</div>
-                                <div>
-                                    <p class="font-semibold text-sm text-gray-900" id="chatTitle">Chọn cuộc trò chuyện
-                                    </p>
-                                </div>
+                                <a id="chatHeaderProfileLink" href="#" class="flex items-center gap-3 flex-1 hover:opacity-80 transition group">
+                                    <div class="relative flex-shrink-0" id="chatHeaderAvatarContainer">
+                                        <img id="chatHeaderAvatarImg" src="" class="hidden w-10 h-10 rounded-full object-cover border border-gray-100 shadow-sm" onerror="this.style.display='none'; document.getElementById('chatHeaderAvatarNoImg').style.display='flex';">
+                                        <div id="chatHeaderAvatarNoImg" class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                                            ?
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p class="font-semibold text-sm text-gray-900 group-hover:underline" id="chatTitle">Chọn cuộc trò chuyện</p>
+                                        <p class="text-xs text-gray-400">Xem trang cá nhân</p>
+                                    </div>
+                                </a>
                             </div>
                             <div id="chatPlaceholder"
                                 class="flex-1 flex items-center justify-center text-gray-400 text-sm">
@@ -135,6 +148,9 @@
                                 </div>
                                 <p class="font-medium">Chưa có tin nhắn nào</p>
                                 <p class="text-xs mt-1">Hãy gửi lời chào để bắt đầu cuộc trò chuyện!</p>
+                            </div>
+                            <div id="notFriendPlaceholder" class="hidden p-4 bg-gray-50 border-t border-gray-200 text-center text-gray-500 text-sm">
+                                Bạn phải là bạn bè mới có thể gửi tin nhắn.
                             </div>
                             <!-- Input -->
                             <div id="chatInputArea" class="hidden p-3 bg-white border-t border-gray-200">
@@ -165,16 +181,11 @@
             </main>
 
             <script>
-                var CTX = '${pageContext.request.contextPath}';
-                var CURRENT_USER = {
-                    username: '${sessionScope.username}',
-                    fullName: '${sessionScope.fullName}',
-                    avatar: '${sessionScope.avatar}'
-                };
-                var CHAT_WITH = '${param.chatWith}'; // from URL param ?chatWith=username
+                // Variables are read from body dataset
+                var CHAT_WITH = '<c:out value="${param.chatWith}"/>'; // from URL param ?chatWith=username
             </script>
-            <script src="${pageContext.request.contextPath}/js/api-client.js"></script>
-            <script src="${pageContext.request.contextPath}/js/chat-servlet.js"></script>
+            <script src="${pageContext.request.contextPath}/js/api-client.js?v=2.2"></script>
+            <script src="${pageContext.request.contextPath}/js/chat-servlet.js?v=2.2"></script>
         </body>
 
         </html>

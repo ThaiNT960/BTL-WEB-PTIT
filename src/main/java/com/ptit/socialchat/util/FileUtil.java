@@ -23,7 +23,16 @@ public class FileUtil {
      * @return The URL path to access the file (e.g. "/socialchat/uploads/avatars/filename.jpg")
      */
     public static String saveUploadedFile(HttpServletRequest request, Part part, String subDirectory) throws IOException {
-        String fileName = UUID.randomUUID().toString() + "-" + extractFileName(part);
+        String originalFileName = extractFileName(part);
+        String ext = "";
+        int dotIndex = originalFileName.lastIndexOf('.');
+        if (dotIndex > 0) {
+            ext = originalFileName.substring(dotIndex + 1).toLowerCase();
+        }
+        if (!ext.matches("^(jpg|jpeg|png|gif|webp)$")) {
+            throw new IllegalArgumentException("Invalid file extension. Only jpg, jpeg, png, gif, webp are allowed.");
+        }
+        String fileName = UUID.randomUUID().toString() + "-" + originalFileName;
         
         // 1. Get Tomcat's deployment directory (for immediate serving)
         String deployUploadPath = request.getServletContext().getRealPath("/") + "uploads" + File.separator + subDirectory;

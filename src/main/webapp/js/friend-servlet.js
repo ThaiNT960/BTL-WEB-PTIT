@@ -13,6 +13,16 @@ document.addEventListener('click', function (e) {
     if (action === 'cancel') cancelRequest(username, btn);
 });
 
+function escapeHtml(unsafe) {
+    if (!unsafe) return "";
+    return String(unsafe)
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+}
+
 async function searchFriend() {
     const query = document.getElementById('searchInput').value.trim();
     if (!query) return;
@@ -25,8 +35,12 @@ async function searchFriend() {
             return;
         }
         container.innerHTML = users.map(u => {
-            const initial = (u.fullName || u.username || '?').charAt(0).toUpperCase();
-            const avt = u.avatar ? `<img src="${u.avatar}" class="w-11 h-11 rounded-full object-cover flex-shrink-0" onerror="this.outerHTML='<div class=\\'w-11 h-11 rounded-full bg-primary flex items-center justify-center text-white font-bold flex-shrink-0\\'>${initial}</div>'">` : `<div class="w-11 h-11 rounded-full bg-primary flex items-center justify-center text-white font-bold flex-shrink-0">${initial}</div>`;
+            const eFullName = escapeHtml(u.fullName || u.username);
+            const eUsername = escapeHtml(u.username);
+            const eAvatar = escapeHtml(u.avatar);
+            
+            const initial = eFullName.charAt(0).toUpperCase();
+            const avt = eAvatar ? `<img src="${eAvatar}" class="w-11 h-11 rounded-full object-cover flex-shrink-0" onerror="this.outerHTML='<div class=\\'w-11 h-11 rounded-full bg-primary flex items-center justify-center text-white font-bold flex-shrink-0\\'>${initial}</div>'">` : `<div class="w-11 h-11 rounded-full bg-primary flex items-center justify-center text-white font-bold flex-shrink-0">${initial}</div>`;
             
             let actionHtml = '';
             const status = u.relationshipStatus;
@@ -34,38 +48,38 @@ async function searchFriend() {
             if (status === 'FRIENDS') {
                 actionHtml = `
                     <div class="flex gap-2">
-                        <a href="${CTX}/chat?chatWith=${u.username}" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium px-3 py-1.5 rounded-full transition">
+                        <a href="${CTX}/chat?chatWith=${eUsername}" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium px-3 py-1.5 rounded-full transition">
                              <i class="fas fa-comment-dots"></i>
                         </a>
-                        <button data-username="${u.username}" data-action="unfriend" class="js-friend-action text-xs bg-red-50 hover:bg-red-100 text-red-600 font-medium px-3 py-1.5 rounded-full transition">
+                        <button data-username="${eUsername}" data-action="unfriend" class="js-friend-action text-xs bg-red-50 hover:bg-red-100 text-red-600 font-medium px-3 py-1.5 rounded-full transition">
                             Hủy
                         </button>
                     </div>`;
             } else if (status === 'PENDING_SENT') {
                 actionHtml = `
-                    <button data-username="${u.username}" data-action="cancel" class="js-friend-action text-xs bg-gray-100 hover:bg-gray-200 text-gray-500 font-medium px-3 py-1.5 rounded-full transition">
+                    <button data-username="${eUsername}" data-action="cancel" class="js-friend-action text-xs bg-gray-100 hover:bg-gray-200 text-gray-500 font-medium px-3 py-1.5 rounded-full transition">
                         Thu hồi
                     </button>`;
             } else if (status === 'PENDING_RECEIVED') {
                  actionHtml = `
                     <div class="flex gap-2">
-                        <button data-username="${u.username}" data-action="accept_by_username" class="js-friend-action text-xs bg-primary hover:bg-primary-dark text-white font-semibold px-3 py-1.5 rounded-full transition">
+                        <button data-username="${eUsername}" data-action="accept_by_username" class="js-friend-action text-xs bg-primary hover:bg-primary-dark text-white font-semibold px-3 py-1.5 rounded-full transition">
                             Ok
                         </button>
                     </div>`;
             } else {
                 actionHtml = `
-                    <button onclick="sendRequest('${u.username}', this)" class="text-xs bg-primary hover:bg-primary-dark text-white font-semibold px-3 py-1.5 rounded-full transition">
+                    <button onclick="sendRequest('${eUsername}', this)" class="text-xs bg-primary hover:bg-primary-dark text-white font-semibold px-3 py-1.5 rounded-full transition">
                         <i class="fas fa-user-plus"></i> Kết bạn
                     </button>`;
             }
 
             return `
-            <div class="flex items-center gap-3 py-3 border-b border-gray-100 last:border-0" id="user-row-${u.username}">
+            <div class="flex items-center gap-3 py-3 border-b border-gray-100 last:border-0" id="user-row-${eUsername}">
                 ${avt}
                 <div class="flex-1 min-w-0">
-                    <p class="font-semibold text-sm text-gray-900">${u.fullName || u.username}</p>
-                    <p class="text-xs text-gray-400">@${u.username}</p>
+                    <p class="font-semibold text-sm text-gray-900">${eFullName}</p>
+                    <p class="text-xs text-gray-400">@${eUsername}</p>
                 </div>
                 <div class="action-wrap">
                     ${actionHtml}

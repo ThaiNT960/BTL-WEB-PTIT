@@ -165,9 +165,20 @@ public class PostDAO {
                 }
             }
             transaction.commit();
+        } catch (org.hibernate.exception.ConstraintViolationException e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            System.err.println("[PostDAO] toggleLike constraint violation: already liked");
+            return true;
         } catch (Exception e) {
             if (transaction != null) {
                 transaction.rollback();
+            }
+            if (e.getCause() instanceof org.hibernate.exception.ConstraintViolationException || 
+                (e.getCause() != null && e.getCause().getCause() instanceof java.sql.SQLIntegrityConstraintViolationException)) {
+                System.err.println("[PostDAO] toggleLike constraint violation: already liked");
+                return true;
             }
             e.printStackTrace();
         }

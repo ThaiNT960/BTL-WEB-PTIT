@@ -12,16 +12,52 @@ import java.util.List;
 
 public class MessageDAO {
 
-    public List<Message> getChatHistory(long user1Id, long user2Id) {
+    public List<Message> getChatHistory(long user1Id, long user2Id, long lastMessageId, int limit) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            return session.createQuery(
-                    "FROM Message m JOIN FETCH m.sender JOIN FETCH m.receiver " +
-                            "WHERE (m.sender.id = :u1 AND m.receiver.id = :u2) " +
-                            "   OR (m.sender.id = :u2 AND m.receiver.id = :u1) " +
-                            "ORDER BY m.timestamp ASC", Message.class)
-                    .setParameter("u1", user1Id)
-                    .setParameter("u2", user2Id)
+            if (lastMessageId > 0) {
+                return session.createQuery(
+                        "FROM Message m JOIN FETCH m.sender JOIN FETCH m.receiver " +
+                                "WHERE ((m.sender.id = :u1 AND m.receiver.id = :u2) " +
+                                "   OR (m.sender.id = :u2 AND m.receiver.id = :u1)) " +
+                                "   AND m.id > :lastId " +
+                                "ORDER BY m.timestamp ASC", Message.class)
+                        .setParameter("u1", user1Id)
+                        .setParameter("u2", user2Id)
+                        .setParameter("lastId", lastMessageId)
+                        .list();
+            } else {
+                List<Message> recent = session.createQuery(
+                        "FROM Message m JOIN FETCH m.sender JOIN FETCH m.receiver " +
+                                "WHERE (m.sender.id = :u1 AND m.receiver.id = :u2) " +
+                                "   OR (m.sender.id = :u2 AND m.receiver.id = :u1) " +
+                                "ORDER BY m.timestamp DESC", Message.class)
+                        .setParameter("u1", user1Id)
+                        .setParameter("u2", user2Id)
+                        .setMaxResults(limit)
+                        .list();
+                java.util.Collections.reverse(recent);
+                return recent;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return new ArrayList<>();
+    }
+
+    public List<User> getChattedUsers(long userId) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            List<User> receivers = session.createQuery(
+                    "SELECT DISTINCT u FROM User u WHERE u.id IN (SELECT m.receiver.id FROM Message m WHERE m.sender.id = :uid)", User.class)
+                    .setParameter("uid", userId)
                     .list();
+            List<User> senders = session.createQuery(
+                    "SELECT DISTINCT u FROM User u WHERE u.id IN (SELECT m.sender.id FROM Message m WHERE m.receiver.id = :uid)", User.class)
+                    .setParameter("uid", userId)
+                    .list();
+            
+            java.util.Set<User> set = new java.util.LinkedHashSet<>(receivers);
+            set.addAll(senders);
+            return new ArrayList<>(set);
         } catch (Exception e) {
             e.printStackTrace();
         }

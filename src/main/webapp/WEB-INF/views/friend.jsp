@@ -6,7 +6,13 @@
         <c:set var="pageTitle" value="PTIT Social - Bạn Bè" />
         <jsp:include page="/WEB-INF/views/layout/header.jsp" />
 
-        <body class="bg-gray-100 font-sans text-gray-900">
+        <body class="bg-gray-100 font-sans text-gray-900"
+              data-username="<c:out value='${sessionScope.username}'/>"
+              data-fullname="<c:out value='${sessionScope.fullName}'/>"
+              data-avatar="<c:out value='${sessionScope.avatar}'/>"
+              data-role="<c:out value='${sessionScope.role}'/>"
+              data-ctx="<c:out value='${pageContext.request.contextPath}'/>"
+              data-csrftoken="<c:out value='${sessionScope.csrfToken}'/>">
 
             <jsp:include page="/WEB-INF/views/layout/navbar.jsp">
                 <jsp:param name="activeMenu" value="friend" />
@@ -51,7 +57,7 @@
                                                     </c:when>
                                                     <c:otherwise>
                                                         <div class="w-11 h-11 rounded-full bg-primary flex items-center justify-center text-white font-bold">
-                                                            ${empty req.sender.fullName ? req.sender.username.substring(0,1).toUpperCase() : req.sender.fullName.substring(0,1).toUpperCase()}
+                                                            <c:out value="${empty req.sender.fullName ? req.sender.username.substring(0,1).toUpperCase() : req.sender.fullName.substring(0,1).toUpperCase()}" />
                                                         </div>
                                                     </c:otherwise>
                                                 </c:choose>
@@ -61,7 +67,7 @@
                                                 <a href="${pageContext.request.contextPath}/ProfileServlet?username=${req.sender.username}"
                                                     class="hover:underline">
                                                     <p class="font-semibold text-sm text-gray-900">
-                                                        ${req.sender.fullName}</p>
+                                                        <c:out value="${req.sender.fullName}" /></p>
                                                 </a>
                                             </div>
 
@@ -101,7 +107,7 @@
                                                     </c:when>
                                                     <c:otherwise>
                                                         <div class="w-11 h-11 rounded-full bg-primary flex items-center justify-center text-white font-bold">
-                                                            ${empty f.fullName ? f.username.substring(0,1).toUpperCase() : f.fullName.substring(0,1).toUpperCase()}
+                                                            <c:out value="${empty f.fullName ? f.username.substring(0,1).toUpperCase() : f.fullName.substring(0,1).toUpperCase()}" />
                                                         </div>
                                                     </c:otherwise>
                                                 </c:choose>
@@ -110,7 +116,7 @@
                                             <div class="flex-1 min-w-0">
                                                 <a href="${pageContext.request.contextPath}/ProfileServlet?username=${f.username}"
                                                     class="hover:underline">
-                                                    <p class="font-semibold text-sm text-gray-900">${f.fullName}</p>
+                                                    <p class="font-semibold text-sm text-gray-900"><c:out value="${f.fullName}" /></p>
                                                 </a>
                                             </div>
 
@@ -134,8 +140,7 @@
             </main>
 
             <script>
-                var CTX = '${pageContext.request.contextPath}';
-                var CURRENT_USER = { username: '${sessionScope.username}' };
+                // Read from body dataset
             </script>
             <script src="${pageContext.request.contextPath}/js/api-client.js"></script>
             <script src="${pageContext.request.contextPath}/js/friend-servlet.js"></script>

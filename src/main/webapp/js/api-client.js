@@ -1,3 +1,13 @@
+const _bodyData = document.body.dataset || {};
+var CTX = _bodyData.ctx || '';
+var CURRENT_USER = {
+    username: _bodyData.username || '',
+    fullName: _bodyData.fullname || '',
+    avatar: _bodyData.avatar || '',
+    role: _bodyData.role || ''
+};
+var CSRF_TOKEN = _bodyData.csrftoken || '';
+
 /**
  * @param {string} url - Đường dẫn URL (nên bao gồm CTX ở trước)
  * @param {object} options - Các tùy chọn fetch (method, headers, body...)
@@ -6,6 +16,12 @@
  */
 async function apiFetch(url, options = {}, returnJson = true) {
     try {
+        if (!options.headers) {
+            options.headers = {};
+        }
+        if (options.method && ['POST', 'PUT', 'DELETE'].includes(options.method.toUpperCase())) {
+            options.headers['X-CSRF-TOKEN'] = CSRF_TOKEN;
+        }
         const response = await fetch(url, options);
 
         if (!response.ok) {

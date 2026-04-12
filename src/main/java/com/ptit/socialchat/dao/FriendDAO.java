@@ -77,18 +77,34 @@ public class FriendDAO {
             User user = session.get(User.class, userId);
             User friend = session.get(User.class, friendId);
             if (user != null && friend != null) {
-                // Add two-way friendship
-                Friendship f1 = new Friendship(user, friend);
-                Friendship f2 = new Friendship(friend, user);
-                session.save(f1);
-                session.save(f2);
+                Long count = session.createQuery("SELECT count(f) FROM Friendship f WHERE f.user.id = :u1 AND f.friend.id = :u2", Long.class)
+                        .setParameter("u1", userId)
+                        .setParameter("u2", friendId)
+                        .uniqueResult();
+                if (count == null || count == 0) {
+                    // Add two-way friendship
+                    Friendship f1 = new Friendship(user, friend);
+                    Friendship f2 = new Friendship(friend, user);
+                    session.save(f1);
+                    session.save(f2);
+                }
             }
             transaction.commit();
+        } catch (org.hibernate.exception.ConstraintViolationException e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            System.err.println("[FriendDAO] addFriendship constraint violation: already friends");
         } catch (Exception e) {
             if (transaction != null) {
                 transaction.rollback();
             }
-            e.printStackTrace();
+            if (e.getCause() instanceof org.hibernate.exception.ConstraintViolationException || 
+                (e.getCause() != null && e.getCause().getCause() instanceof java.sql.SQLIntegrityConstraintViolationException)) {
+                System.err.println("[FriendDAO] addFriendship constraint violation: already friends");
+            } else {
+                e.printStackTrace();
+            }
         }
     }
 

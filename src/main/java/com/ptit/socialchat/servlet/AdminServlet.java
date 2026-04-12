@@ -65,14 +65,14 @@ public class AdminServlet extends HttpServlet {
                 long userId = Long.parseLong(req.getParameter("userId"));
                 userDAO.delete(userId);
                 resp.setContentType("application/json;charset=UTF-8");
-                resp.getWriter().write("{\"status\":\"ok\"}");
+                resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("status", "ok")));
                 break;
             }
             case "deletePost": {
                 long postId = Long.parseLong(req.getParameter("postId"));
                 postDAO.delete(postId);
                 resp.setContentType("application/json;charset=UTF-8");
-                resp.getWriter().write("{\"status\":\"ok\"}");
+                resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("status", "ok")));
                 break;
             }
             case "createUser": {
@@ -84,7 +84,7 @@ public class AdminServlet extends HttpServlet {
                 try {
                     if (username == null || username.trim().isEmpty() || password == null || password.trim().isEmpty() || password.length() < 6) {
                         resp.setStatus(400);
-                        resp.getWriter().write("{\"error\":\"Tên đăng nhập hoặc mật khẩu không hợp lệ.\"}");
+                        resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("error", "Tên đăng nhập hoặc mật khẩu không hợp lệ.")));
                         return;
                     }
 
@@ -95,21 +95,21 @@ public class AdminServlet extends HttpServlet {
                         u.setPassword(org.mindrot.jbcrypt.BCrypt.hashpw(password, org.mindrot.jbcrypt.BCrypt.gensalt(12)));
                         u.setRole("ROLE_USER");
                         userDAO.save(u);
-                        resp.getWriter().write("{\"status\":\"ok\"}");
+                        resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("status", "ok")));
                     } else {
                         resp.setStatus(400);
-                        resp.getWriter().write("{\"error\":\"Tên đăng nhập đã tồn tại.\"}");
+                        resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("error", "Tên đăng nhập đã tồn tại.")));
                     }
                 } catch (Exception e) {
                     resp.setStatus(500);
-                    resp.getWriter().write("{\"error\":\"Lỗi server nội bộ.\"}");
+                    resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("error", "Lỗi server nội bộ.")));
                 }
                 break;
             }
             default:
                 resp.setStatus(400);
                 resp.setContentType("application/json;charset=UTF-8");
-                resp.getWriter().write("{\"error\":\"Unknown action\"}");
+                resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("error", "Unknown action")));
         }
     }
 }

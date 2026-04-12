@@ -3,17 +3,51 @@
 
 let currentChatUser = null;
 let pollingInterval = null;
-let lastMessageCount = 0;
+let lastLoadedMessageId = 0;
+
+function escapeHtml(unsafe) {
+    if (!unsafe) return "";
+    return String(unsafe)
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     setupMessageForm();
+    setupFriendSearch();
     // If chatWith param provided (from friend.jsp), auto-select
     if (CHAT_WITH && CHAT_WITH.trim() !== '') {
         const item = document.querySelector(`.chat-contact-item[data-username="${CHAT_WITH}"]`);
         const fullName = item ? item.dataset.fullname : CHAT_WITH;
-        selectChat(CHAT_WITH, fullName);
+        const avatarUrl = item ? item.dataset.avatar : '';
+        selectChat(CHAT_WITH, fullName, avatarUrl);
     }
 });
+
+function setupFriendSearch() {
+    const searchInput = document.getElementById('friendSearchInput');
+    if (!searchInput) return;
+
+    searchInput.addEventListener('input', function(e) {
+        const query = e.target.value.toLowerCase().trim();
+        const friendsList = document.getElementById('friendsList');
+        const items = friendsList.querySelectorAll('.chat-contact-item');
+        
+        items.forEach(item => {
+            const name = item.dataset.fullname ? item.dataset.fullname.toLowerCase() : '';
+            const username = item.dataset.username ? item.dataset.username.toLowerCase() : '';
+            
+            if (name.includes(query) || username.includes(query)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+}
 
 function formatMessageTime(dateStr) {
     if (!dateStr) return '';
@@ -21,17 +55,42 @@ function formatMessageTime(dateStr) {
     return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 }
 
-function selectChat(username, fullName) {
+function selectChat(username, fullName, avatarUrl) {
     currentChatUser = username;
 
     // Update header
     document.getElementById('chatTitle').textContent = fullName || username;
-    const partnerAv = document.getElementById('chatPartnerAvatar');
-    if (partnerAv) partnerAv.textContent = (fullName || username).charAt(0).toUpperCase();
+    const partnerAvImg = document.getElementById('chatHeaderAvatarImg');
+    const partnerAvNoImg = document.getElementById('chatHeaderAvatarNoImg');
+    
+    if (avatarUrl && avatarUrl.trim() !== '') {
+        partnerAvImg.src = avatarUrl;
+        partnerAvImg.style.display = '';
+        partnerAvImg.classList.remove('hidden');
+        partnerAvNoImg.style.display = '';
+        partnerAvNoImg.classList.add('hidden');
+    } else {
+        partnerAvImg.style.display = '';
+        partnerAvImg.classList.add('hidden');
+        partnerAvNoImg.style.display = '';
+        partnerAvNoImg.classList.remove('hidden');
+        partnerAvNoImg.textContent = (fullName || username).charAt(0).toUpperCase();
+    }
+    
+    // Update profile link in header
+    const profileLink = document.getElementById('chatHeaderProfileLink');
+    if (profileLink) {
+        profileLink.href = `${CTX}/ProfileServlet?username=${encodeURIComponent(username)}`;
+    }
+
     document.getElementById('chatWindowHeader').classList.remove('hidden');
     document.getElementById('chatPlaceholder').classList.add('hidden');
     document.getElementById('chatMessages').classList.remove('hidden');
-    document.getElementById('chatInputArea').classList.remove('hidden');
+    
+    // Hide input areas, wait for history API to toggle
+    document.getElementById('chatInputArea').classList.add('hidden');
+    const notFriendPlaceholder = document.getElementById('notFriendPlaceholder');
+    if (notFriendPlaceholder) notFriendPlaceholder.classList.add('hidden');
 
     // Highlight active contact
     document.querySelectorAll('.chat-contact-item').forEach(item => {
@@ -47,7 +106,7 @@ function selectChat(username, fullName) {
     const emptyPlaceholder = document.getElementById('emptyChatPlaceholder');
     if (emptyPlaceholder) emptyPlaceholder.classList.add('hidden');
     
-    lastMessageCount = 0;
+    lastLoadedMessageId = 0;
     loadChatHistory(true);
 
     // Start polling
@@ -58,35 +117,47 @@ function selectChat(username, fullName) {
 async function loadChatHistory(scrollBottom) {
     if (!currentChatUser) return;
     try {
-        const url = `${CTX}/ChatServlet?action=history&otherUser=${encodeURIComponent(currentChatUser)}`;
-        const messages = await apiFetch(url);
+        const url = `${CTX}/ChatServlet?action=history&otherUser=${encodeURIComponent(currentChatUser)}&lastMessageId=${lastLoadedMessageId}`;
+        const responseData = await apiFetch(url);
+        
+        const messages = responseData.messages || [];
+        const isFriend = responseData.isFriend;
 
         const msgsContainer = document.getElementById('chatMessages');
         const emptyPlaceholder = document.getElementById('emptyChatPlaceholder');
+        const chatInputArea = document.getElementById('chatInputArea');
+        const notFriendPlaceholder = document.getElementById('notFriendPlaceholder');
+        
+        // Show/hide input area based on isFriend
+        if (isFriend) {
+            chatInputArea.classList.remove('hidden');
+            if (notFriendPlaceholder) notFriendPlaceholder.classList.add('hidden');
+        } else {
+            chatInputArea.classList.add('hidden');
+            if (notFriendPlaceholder) notFriendPlaceholder.classList.remove('hidden');
+        }
 
         if (!messages || messages.length === 0) {
-            msgsContainer.classList.add('hidden');
-            emptyPlaceholder.classList.remove('hidden');
-            lastMessageCount = 0;
+            if (lastLoadedMessageId === 0) {
+                msgsContainer.classList.add('hidden');
+                emptyPlaceholder.classList.remove('hidden');
+            }
             return;
         }
 
         emptyPlaceholder.classList.add('hidden');
         msgsContainer.classList.remove('hidden');
 
-        // Only update if new messages arrived
-        if (messages.length > lastMessageCount) {
-            // Lấy ra các tin nhắn mới từ mảng trả về
-            const newMessages = messages.slice(lastMessageCount);
-            
-            newMessages.forEach(msg => {
-                const type = msg.senderUsername === CURRENT_USER.username ? 'sent' : 'received';
-                appendMessage(msg, type, msgsContainer);
-            });
-            
-            lastMessageCount = messages.length;
-            if (scrollBottom) msgsContainer.scrollTop = msgsContainer.scrollHeight;
-        }
+        // Render all returned messages chronologically
+        messages.forEach(msg => {
+            const type = msg.senderUsername === CURRENT_USER.username ? 'sent' : 'received';
+            appendMessage(msg, type, msgsContainer);
+            if (msg.id > lastLoadedMessageId) {
+                lastLoadedMessageId = msg.id;
+            }
+        });
+        
+        if (scrollBottom) msgsContainer.scrollTop = msgsContainer.scrollHeight;
     } catch (e) { 
         console.error("Lỗi tải chat:", e);
         // If error persists, maybe show a small toast or warning
@@ -98,8 +169,8 @@ function appendMessage(message, type, container) {
     const timeStr = formatMessageTime(message.timestamp);
     const div = document.createElement('div');
     div.className = `flex ${type === 'sent' ? 'justify-end' : 'justify-start'} mb-1`;
-    const imgHtml = message.imageUrl ? `<img src="${message.imageUrl}" class="w-full rounded-lg mb-2 cursor-pointer max-h-64 object-cover" onclick="window.open('${message.imageUrl}', '_blank')">` : '';
-    const contentHtml = message.content ? `<div>${message.content}</div>` : '';
+    const imgHtml = message.imageUrl ? `<img src="${message.imageUrl}" class="w-full rounded-lg mb-2 cursor-pointer max-h-64 object-cover" onclick="window.open('${message.imageUrl}', '_blank')" onload="const c=document.getElementById('chatMessages'); if(c) c.scrollTop=c.scrollHeight;">` : '';
+    const contentHtml = message.content ? `<div>${escapeHtml(message.content)}</div>` : '';
 
     div.innerHTML = `
         <div class="max-w-xs lg:max-w-md px-4 py-2.5 rounded-2xl text-sm leading-relaxed
@@ -163,11 +234,10 @@ function setupMessageForm() {
             if (hasImage) {
                 const formData = new FormData();
                 formData.append('imageFile', imageInput.files[0]);
-                const uploadRes = await fetch(CTX + '/UploadChatImage', {
+                const uploadResult = await apiFetch(CTX + '/UploadChatImage', {
                     method: 'POST',
                     body: formData
                 });
-                const uploadResult = await uploadRes.json();
                 if (uploadResult.imageUrl) {
                     selectedImageUrl = uploadResult.imageUrl;
                 } else {
@@ -195,7 +265,6 @@ function setupMessageForm() {
             await loadChatHistory(true);
         } catch (e) { 
             console.error("Lỗi gửi tin nhắn:", e); 
-            alert('Có lỗi xảy ra khi gửi tin nhắn');
         }
     });
 }

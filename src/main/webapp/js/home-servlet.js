@@ -5,6 +5,16 @@ document.addEventListener('DOMContentLoaded', function() {
     setupPostForm();
 });
 
+function escapeHtml(unsafe) {
+    if (!unsafe) return "";
+    return String(unsafe)
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+}
+
 function formatTime(dateStr) {
     if (!dateStr) return '';
     var now = new Date();
@@ -23,11 +33,16 @@ function formatTime(dateStr) {
 
 async function loadPosts() {
     try {
-        var posts = await apiFetch(CTX + '/PostServlet');
+        var url = CTX + '/PostServlet';
+        if (typeof PROFILE_USERNAME !== 'undefined' && PROFILE_USERNAME) {
+            url += '?username=' + encodeURIComponent(PROFILE_USERNAME);
+        }
+        var posts = await apiFetch(url);
         var feed = document.getElementById('postsFeed');
+        if (!feed) return;
         feed.innerHTML = '';
         if (!posts || !posts.length) {
-            feed.innerHTML = '<div class="bg-white rounded-2xl shadow-sm p-8 text-center text-gray-400 text-sm">Chưa có bài viết nào. Hãy đăng bài đầu tiên!</div>';
+            feed.innerHTML = '<div class="bg-white rounded-2xl shadow-sm p-8 text-center text-gray-400 text-sm">Chưa có bài viết nào.</div>';
             return;
         }
         posts.forEach(function(post) { renderPost(post, feed); });
@@ -53,17 +68,18 @@ function renderPost(post, container) {
     var commentsHtml = '';
     (post.comments || []).forEach(function(c) {
         var cInit = (c.userFullName || c.username || 'U').charAt(0).toUpperCase();
+        var cFullNameOrUsername = escapeHtml(c.userFullName || c.username);
         var cAvt;
         if (c.avatar) {
-            cAvt = '<img src="' + c.avatar + '" class="w-8 h-8 rounded-full object-cover flex-shrink-0" onerror="this.style.display=\'none\'">';
+            cAvt = '<img src="' + escapeHtml(c.avatar) + '" class="w-8 h-8 rounded-full object-cover flex-shrink-0" onerror="this.style.display=\'none\'">';
         } else {
             cAvt = '<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-xs flex-shrink-0">' + cInit + '</div>';
         }
         commentsHtml += '<div class="flex gap-3 mb-3">'
-            + '<a href="' + CTX + '/ProfileServlet?username=' + c.username + '" class="flex-shrink-0 hover:opacity-80 transition">' + cAvt + '</a>'
+            + '<a href="' + CTX + '/ProfileServlet?username=' + escapeHtml(c.username) + '" class="flex-shrink-0 hover:opacity-80 transition">' + cAvt + '</a>'
             + '<div class="bg-white rounded-xl px-3 py-2 flex-1 shadow-sm">'
-            + '<p class="font-semibold text-xs text-gray-700 mb-0.5"><a href="' + CTX + '/ProfileServlet?username=' + c.username + '" class="hover:underline">' + (c.userFullName || c.username) + '</a></p>'
-            + '<p class="text-sm text-gray-800">' + c.content + '</p>'
+            + '<p class="font-semibold text-xs text-gray-700 mb-0.5"><a href="' + CTX + '/ProfileServlet?username=' + escapeHtml(c.username) + '" class="hover:underline">' + cFullNameOrUsername + '</a></p>'
+            + '<p class="text-sm text-gray-800" style="white-space: pre-wrap;">' + escapeHtml(c.content) + '</p>'
             + '</div></div>';
     });
 
@@ -78,16 +94,27 @@ function renderPost(post, container) {
     var div = document.createElement('div');
     div.id = 'post-' + post.id;
     div.className = 'bg-white rounded-2xl shadow-sm mb-4 overflow-hidden';
+        var canComment = post.isFriend || isOwner || isAdmin;
+        var commentInputHtml = canComment ? 
+          '<div class="flex gap-2 mt-2">'
+        + '<input type="text" id="comment-input-' + post.id + '" placeholder="Viết bình luận..."'
+        + ' class="flex-1 bg-white border border-gray-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-primary transition"'
+        + ' onkeyup="if(event.key===\'Enter\') submitComment(' + post.id + ', this)">'
+        + '<button onclick="submitComment(' + post.id + ', document.getElementById(\'comment-input-' + post.id + '\'))" class="bg-primary hover:bg-primary-dark text-white text-xs font-semibold px-4 py-2 rounded-full transition">Gửi</button>'
+        + '</div>'
+        : '<p class="text-xs text-gray-400 italic text-center mt-3 mb-1">Chỉ bạn bè mới có thể bình luận.</p>';
+
     div.innerHTML = '<div class="p-5">'
+        // ... (previous innerHTML config)
         + '<div class="flex items-center gap-3 mb-3">'
-        + '<a href="' + CTX + '/ProfileServlet?username=' + post.username + '" class="flex-shrink-0 hover:opacity-80 transition">' + avatarHtml + '</a>'
+        + '<a href="' + CTX + '/ProfileServlet?username=' + escapeHtml(post.username) + '" class="flex-shrink-0 hover:opacity-80 transition">' + avatarHtml + '</a>'
         + '<div class="flex-1 min-w-0">'
-        + '<p class="font-semibold text-gray-900 text-sm"><a href="' + CTX + '/ProfileServlet?username=' + post.username + '" class="hover:underline">' + (post.userFullName || post.username) + '</a></p>'
+        + '<p class="font-semibold text-gray-900 text-sm"><a href="' + CTX + '/ProfileServlet?username=' + escapeHtml(post.username) + '" class="hover:underline">' + escapeHtml(post.userFullName || post.username) + '</a></p>'
         + '<p class="text-xs text-gray-400">' + formatTime(post.createdAt) + '</p>'
         + '</div>'
         + deleteBtn
         + '</div>'
-        + '<p class="text-gray-800 text-sm leading-relaxed mb-3">' + (post.content || '') + '</p>'
+        + '<p class="text-gray-800 text-sm leading-relaxed mb-3" style="white-space: pre-wrap;">' + escapeHtml(post.content || '') + '</p>'
         + imageHtml
         + '<div class="flex items-center gap-4 text-xs text-gray-400 mb-3">'
         + '<span id="like-count-' + post.id + '">' + likeCount + ' lượt thích</span>'
@@ -107,12 +134,7 @@ function renderPost(post, container) {
         + '<div id="comments-list-' + post.id + '">'
         + commentsHtml
         + '</div>'
-        + '<div class="flex gap-2 mt-2">'
-        + '<input type="text" id="comment-input-' + post.id + '" placeholder="Viết bình luận..."'
-        + ' class="flex-1 bg-white border border-gray-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-primary transition"'
-        + ' onkeyup="if(event.key===\'Enter\') submitComment(' + post.id + ', this)">'
-        + '<button onclick="submitComment(' + post.id + ', document.getElementById(\'comment-input-' + post.id + '\'))" class="bg-primary hover:bg-primary-dark text-white text-xs font-semibold px-4 py-2 rounded-full transition">Gửi</button>'
-        + '</div>'
+        + commentInputHtml
         + '</div>';
     container.appendChild(div);
 }
@@ -136,7 +158,13 @@ async function toggleLike(postId, btn) {
 
         var liked = data.liked;
         btn.dataset.liked = liked;
-        btn.className = 'flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition hover:bg-gray-50 ' + (liked ? 'text-primary' : 'text-gray-500');
+        if (liked) {
+            btn.classList.remove('text-gray-500');
+            btn.classList.add('text-primary');
+        } else {
+            btn.classList.remove('text-primary');
+            btn.classList.add('text-gray-500');
+        }
         btn.innerHTML = '<i class="' + (liked ? 'fas' : 'far') + ' fa-heart"></i> Thích';
         var countEl = document.getElementById('like-count-' + postId);
         if (countEl) countEl.textContent = data.likeCount + ' lượt thích';
@@ -168,6 +196,12 @@ function submitComment(postId, inputEl) {
     params.append('postId', postId);
     params.append('content', content);
 
+    var submitBtn = inputEl.nextElementSibling;
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '...';
+    }
+
     apiFetch(CTX + '/PostServlet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -189,8 +223,8 @@ function submitComment(postId, inputEl) {
 
         div.innerHTML = myAvt
             + '<div class="bg-white rounded-xl px-3 py-2 flex-1 shadow-sm border border-gray-100">'
-            + '<p class="font-semibold text-xs text-gray-700 mb-0.5">' + (CURRENT_USER.fullName || CURRENT_USER.username) + '</p>'
-            + '<p class="text-sm text-gray-800" style="white-space: pre-wrap;">' + content + '</p>'
+            + '<p class="font-semibold text-xs text-gray-700 mb-0.5">' + escapeHtml(CURRENT_USER.fullName || CURRENT_USER.username) + '</p>'
+            + '<p class="text-sm text-gray-800" style="white-space: pre-wrap;">' + escapeHtml(content) + '</p>'
             + '</div>';
         list.appendChild(div);
 
@@ -201,6 +235,11 @@ function submitComment(postId, inputEl) {
         }
     }).catch(function(err) {
         console.error('Comment error:', err);
+    }).finally(function() {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Gửi';
+        }
     });
 }
 
@@ -250,11 +289,10 @@ function setupPostForm() {
             if (hasImage) {
                 var formData = new FormData();
                 formData.append('imageFile', imageInput.files[0]);
-                var uploadRes = await fetch(CTX + '/UploadChatImage', {
+                var uploadResult = await apiFetch(CTX + '/UploadChatImage', {
                     method: 'POST',
                     body: formData
                 });
-                var uploadResult = await uploadRes.json();
                 if (uploadResult.imageUrl) {
                     selectedImageUrl = uploadResult.imageUrl;
                 } else {

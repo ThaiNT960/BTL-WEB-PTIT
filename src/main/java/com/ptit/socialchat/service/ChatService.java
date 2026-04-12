@@ -15,7 +15,7 @@ public class ChatService {
     private final FriendDAO friendDAO = new FriendDAO();
     private final UserDAO userDAO = new UserDAO();
 
-    public List<Message> getChatHistory(long currentUserId, String otherUsername) throws IllegalArgumentException {
+    public List<Message> getChatHistory(long currentUserId, String otherUsername, long lastMessageId, int limit) throws IllegalArgumentException {
         if (otherUsername == null || otherUsername.trim().isEmpty()) {
             throw new IllegalArgumentException("Vui lòng cung cấp tên người trò chuyện hợp lệ.");
         }
@@ -25,13 +25,7 @@ public class ChatService {
             throw new IllegalArgumentException("Không tìm thấy thông tin đối phương.");
         }
 
-        if (currentUserId != otherUser.getId()) {
-            if (!friendDAO.isFriend(currentUserId, otherUser.getId())) {
-                throw new IllegalArgumentException("Bảo mật: Không thể xem lịch sử hoặc nhắn tin vì hai người chưa kết bạn.");
-            }
-        }
-
-        return messageDAO.getChatHistory(currentUserId, otherUser.getId());
+        return messageDAO.getChatHistory(currentUserId, otherUser.getId(), lastMessageId, limit);
     }
 
     public void sendMessage(long currentUserId, String receiverUsername, String content, String imageUrl) throws IllegalArgumentException {
@@ -63,5 +57,11 @@ public class ChatService {
         }
 
         messageDAO.save(currentUserId, receiver.getId(), content != null ? content.trim() : "", imageUrl);
+    }
+
+    public boolean isFriendWith(long currentUserId, String otherUsername) {
+        User otherUser = userDAO.findByUsername(otherUsername.trim());
+        if (otherUser == null) return false;
+        return friendDAO.isFriend(currentUserId, otherUser.getId());
     }
 }

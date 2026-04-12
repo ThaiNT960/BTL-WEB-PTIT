@@ -35,6 +35,10 @@ public class LoginServlet extends HttpServlet {
 
         try {
             User user = authService.login(username, password);
+            HttpSession oldSession = req.getSession(false);
+            if (oldSession != null) {
+                oldSession.invalidate();
+            }
             HttpSession session = req.getSession(true);
             session.setAttribute("userId", user.getId());
             session.setAttribute("username", user.getUsername());

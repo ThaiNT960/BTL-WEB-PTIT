@@ -3,6 +3,8 @@ package com.ptit.socialchat.servlet;
 import com.google.gson.Gson;
 import com.ptit.socialchat.dao.PostDAO;
 import com.ptit.socialchat.dao.UserDAO;
+import com.ptit.socialchat.dao.FriendDAO;
+import com.ptit.socialchat.model.FriendRequest;
 import com.ptit.socialchat.model.Post;
 import com.ptit.socialchat.model.User;
 import com.ptit.socialchat.service.AuthService;
@@ -22,6 +24,7 @@ public class ProfileServlet extends HttpServlet {
 
     private final UserDAO userDAO = new UserDAO();
     private final PostDAO postDAO = new PostDAO();
+    private final FriendDAO friendDAO = new FriendDAO();
     private final AuthService authService = new AuthService();
     private final Gson gson = new Gson();
 
@@ -35,9 +38,12 @@ public class ProfileServlet extends HttpServlet {
         User user = null;
         if (targetUsername != null && !targetUsername.trim().isEmpty()) {
             user = userDAO.findByUsername(targetUsername.trim());
-        }
-        
-        if (user == null) {
+            if (user == null) {
+                // Return 404 if invalid user requested
+                resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Người dùng không tồn tại.");
+                return;
+            }
+        } else {
             user = userDAO.findById(currentUserId);
         }
 
@@ -52,8 +58,31 @@ public class ProfileServlet extends HttpServlet {
             p.setComments(postDAO.findCommentsByPostId(p.getId()));
         }
 
-        req.setAttribute("profileUser", user);
+        req.setAttribute("profileUser", profileUser);
         req.setAttribute("userPosts", userPosts);
+
+        // Compute relationship if viewing someone else's profile
+        if (profileUser.getId() != currentUserId) {
+            String relationshipStatus = "NONE";
+            long friendRequestId = 0;
+            if (friendDAO.isFriend(currentUserId, profileUser.getId())) {
+                relationshipStatus = "FRIENDS";
+            } else if (friendDAO.hasPendingRequestFromTo(currentUserId, profileUser.getId())) {
+                relationshipStatus = "PENDING_SENT";
+            } else {
+                List<FriendRequest> received = friendDAO.getPendingRequests(currentUserId);
+                java.util.Optional<FriendRequest> inbound = received.stream()
+                        .filter(r -> r.getSender().getId() == profileUser.getId())
+                        .findFirst();
+                if (inbound.isPresent()) {
+                    relationshipStatus = "PENDING_RECEIVED";
+                    friendRequestId = inbound.get().getId();
+                }
+            }
+            req.setAttribute("relationshipStatus", relationshipStatus);
+            req.setAttribute("friendRequestId", friendRequestId);
+        }
+
         req.getRequestDispatcher("/WEB-INF/views/profile.jsp").forward(req, resp);
     }
 
@@ -70,7 +99,7 @@ public class ProfileServlet extends HttpServlet {
             try {
                 authService.changePassword(currentUserId, oldPassword, newPassword);
                 resp.setContentType("application/json;charset=UTF-8");
-                resp.getWriter().write("{\"status\":\"ok\"}");
+                resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("status", "ok")));
             } catch (IllegalArgumentException e) {
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 resp.setContentType("application/json;charset=UTF-8");
@@ -85,7 +114,7 @@ public class ProfileServlet extends HttpServlet {
         User user = userDAO.findById(currentUserId);
         if (user == null) {
             resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            resp.getWriter().write("{\"error\":\"User not found\"}");
+            resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("error", "User not found")));
             return;
         }
 
@@ -121,7 +150,10 @@ public class ProfileServlet extends HttpServlet {
         session.setAttribute("avatar", user.getAvatar());
 
         resp.setContentType("application/json;charset=UTF-8");
-        resp.getWriter().write("{\"status\":\"ok\",\"fullName\":\"" + user.getFullName() + "\",\"avatar\":\"" +
-                (user.getAvatar() != null ? user.getAvatar() : "") + "\"}");
+        java.util.Map<String, String> res = new java.util.HashMap<>();
+        res.put("status", "ok");
+        res.put("fullName", user.getFullName());
+        res.put("avatar", user.getAvatar() != null ? user.getAvatar() : "");
+        resp.getWriter().write(gson.toJson(res));
     }
 }

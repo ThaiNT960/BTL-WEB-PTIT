@@ -6,7 +6,13 @@
         <c:set var="pageTitle" value="PTIT Social - Trang Chủ" />
         <jsp:include page="/WEB-INF/views/layout/header.jsp" />
 
-        <body class="bg-gray-100 font-sans text-gray-900">
+        <body class="bg-gray-100 font-sans text-gray-900"
+              data-username="<c:out value='${sessionScope.username}'/>"
+              data-fullname="<c:out value='${sessionScope.fullName}'/>"
+              data-avatar="<c:out value='${sessionScope.avatar}'/>"
+              data-role="<c:out value='${sessionScope.role}'/>"
+              data-ctx="<c:out value='${pageContext.request.contextPath}'/>"
+              data-csrftoken="<c:out value='${sessionScope.csrfToken}'/>">
 
             <!-- NAVBAR -->
             <jsp:include page="/WEB-INF/views/layout/navbar.jsp">
@@ -58,14 +64,7 @@
             </a>
 
             <script>
-                // Session info from server
-                var CURRENT_USER = {
-                    username: '${sessionScope.username}',
-                    fullName: '${sessionScope.fullName}',
-                    avatar: '${sessionScope.avatar}',
-                    role: '${sessionScope.role}'
-                };
-                var CTX = '${pageContext.request.contextPath}';
+                // Session info from server is passed via dataset attributes on body
 
                 function toggleUserMenu() {
                     document.getElementById('userMenu').classList.toggle('hidden');

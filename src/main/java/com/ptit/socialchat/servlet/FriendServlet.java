@@ -96,7 +96,7 @@ public class FriendServlet extends HttpServlet {
                     try {
                         friendService.sendFriendRequest(currentUserId, receiverUsername);
                         resp.setContentType("application/json;charset=UTF-8");
-                        resp.getWriter().write("{\"status\":\"ok\"}");
+                        resp.getWriter().write(gson.toJson(Collections.singletonMap("status", "ok")));
                     } catch (IllegalArgumentException e) {
                         resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                         resp.setContentType("application/json;charset=UTF-8");
@@ -110,7 +110,7 @@ public class FriendServlet extends HttpServlet {
                         long requestId = Long.parseLong(reqIdStr != null ? reqIdStr : "0");
                         friendService.acceptFriendRequest(requestId, currentUserId);
                         resp.setContentType("application/json;charset=UTF-8");
-                        resp.getWriter().write("{\"status\":\"ok\"}");
+                        resp.getWriter().write(gson.toJson(Collections.singletonMap("status", "ok")));
                     } catch (Exception e) {
                         resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                         resp.setContentType("application/json;charset=UTF-8");
@@ -123,7 +123,7 @@ public class FriendServlet extends HttpServlet {
                     try {
                         friendService.acceptFriendRequestByUsername(currentUserId, senderUsername);
                         resp.setContentType("application/json;charset=UTF-8");
-                        resp.getWriter().write("{\"status\":\"ok\"}");
+                        resp.getWriter().write(gson.toJson(Collections.singletonMap("status", "ok")));
                     } catch (Exception e) {
                         resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                         resp.setContentType("application/json;charset=UTF-8");
@@ -137,7 +137,7 @@ public class FriendServlet extends HttpServlet {
                         long requestId = Long.parseLong(reqIdStr != null ? reqIdStr : "0");
                         friendService.rejectFriendRequest(requestId, currentUserId);
                         resp.setContentType("application/json;charset=UTF-8");
-                        resp.getWriter().write("{\"status\":\"ok\"}");
+                        resp.getWriter().write(gson.toJson(Collections.singletonMap("status", "ok")));
                     } catch (Exception e) {
                         resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                         resp.setContentType("application/json;charset=UTF-8");
@@ -150,7 +150,7 @@ public class FriendServlet extends HttpServlet {
                     try {
                         friendService.unfriend(currentUserId, targetUsername);
                         resp.setContentType("application/json;charset=UTF-8");
-                        resp.getWriter().write("{\"status\":\"ok\"}");
+                        resp.getWriter().write(gson.toJson(Collections.singletonMap("status", "ok")));
                     } catch (Exception e) {
                         resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                         resp.setContentType("application/json;charset=UTF-8");
@@ -163,7 +163,7 @@ public class FriendServlet extends HttpServlet {
                     try {
                         friendService.cancelRequest(currentUserId, targetUsername);
                         resp.setContentType("application/json;charset=UTF-8");
-                        resp.getWriter().write("{\"status\":\"ok\"}");
+                        resp.getWriter().write(gson.toJson(Collections.singletonMap("status", "ok")));
                     } catch (Exception e) {
                         resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                         resp.setContentType("application/json;charset=UTF-8");

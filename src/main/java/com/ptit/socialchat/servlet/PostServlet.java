@@ -1,6 +1,7 @@
 package com.ptit.socialchat.servlet;
 
 import com.google.gson.Gson;
+import com.ptit.socialchat.dao.FriendDAO;
 import com.ptit.socialchat.dao.PostDAO;
 import com.ptit.socialchat.model.Comment;
 import com.ptit.socialchat.model.Post;
@@ -14,6 +15,7 @@ import java.util.*;
 public class PostServlet extends HttpServlet {
 
     private final PostDAO postDAO = new PostDAO();
+    private final FriendDAO friendDAO = new FriendDAO();
     private final PostService postService = new PostService();
     private final Gson gson = new Gson();
 
@@ -24,7 +26,14 @@ public class PostServlet extends HttpServlet {
         HttpSession session = req.getSession(false);
         long currentUserId = (long) session.getAttribute("userId");
 
+        String targetUsername = req.getParameter("username");
         List<Post> posts = postDAO.findAllOrderByCreatedAtDesc();
+        if (targetUsername != null && !targetUsername.trim().isEmpty()) {
+            posts = posts.stream()
+                .filter(p -> targetUsername.equals(p.getUser().getUsername()))
+                .collect(java.util.stream.Collectors.toList());
+        }
+        
         List<Map<String, Object>> result = new ArrayList<>();
 
         for (Post post : posts) {
@@ -43,6 +52,9 @@ public class PostServlet extends HttpServlet {
             map.put("avatar", post.getUser().getAvatar());
             map.put("likeCount", post.getLikeCount());
             map.put("liked", post.isLiked());
+            
+            boolean isFriend = post.getUser().getId() == currentUserId || friendDAO.isFriend(currentUserId, post.getUser().getId());
+            map.put("isFriend", isFriend);
 
             List<Map<String, Object>> commentList = new ArrayList<>();
             for (Comment c : comments) {
@@ -100,19 +112,19 @@ public class PostServlet extends HttpServlet {
         try {
             postService.createPost(userId, content, imageUrl);
             resp.setContentType("application/json;charset=UTF-8");
-            resp.getWriter().write("{\"status\":\"ok\"}");
+            resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("status", "ok")));
             System.out.println("[PostServlet] Post created successfully");
         } catch (IllegalArgumentException e) {
             System.err.println("[PostServlet] Validation error: " + e.getMessage());
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             resp.setContentType("application/json;charset=UTF-8");
-            resp.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
+            resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("error", e.getMessage())));
         } catch (Exception e) {
             System.err.println("[PostServlet] Unexpected error creating post: " + e.getMessage());
             e.printStackTrace();
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             resp.setContentType("application/json;charset=UTF-8");
-            resp.getWriter().write("{\"error\": \"Lỗi hệ thống khi đăng bài: " + e.getMessage() + "\"}");
+            resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("error", "Lỗi hệ thống khi đăng bài: " + e.getMessage())));
         }
     }
 
@@ -123,11 +135,11 @@ public class PostServlet extends HttpServlet {
         try {
             postService.addComment(userId, postId, content);
             resp.setContentType("application/json;charset=UTF-8");
-            resp.getWriter().write("{\"status\":\"ok\"}");
+            resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("status", "ok")));
         } catch (IllegalArgumentException e) {
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             resp.setContentType("application/json;charset=UTF-8");
-            resp.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
+            resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("error", e.getMessage())));
         }
     }
 
@@ -138,11 +150,14 @@ public class PostServlet extends HttpServlet {
             boolean liked = postService.toggleLike(userId, postId);
             int likeCount = postDAO.getLikeCount(postId);
             resp.setContentType("application/json;charset=UTF-8");
-            resp.getWriter().write("{\"liked\":" + liked + ",\"likeCount\":" + likeCount + "}");
+            java.util.Map<String, Object> likeRes = new java.util.HashMap<>();
+            likeRes.put("liked", liked);
+            likeRes.put("likeCount", likeCount);
+            resp.getWriter().write(gson.toJson(likeRes));
         } catch (IllegalArgumentException e) {
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             resp.setContentType("application/json;charset=UTF-8");
-            resp.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
+            resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("error", e.getMessage())));
         }
     }
 
@@ -153,11 +168,11 @@ public class PostServlet extends HttpServlet {
         try {
             postService.deletePost(currentUserId, postId, role);
             resp.setContentType("application/json;charset=UTF-8");
-            resp.getWriter().write("{\"status\":\"ok\"}");
+            resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("status", "ok")));
         } catch (IllegalArgumentException e) {
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             resp.setContentType("application/json;charset=UTF-8");
-            resp.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
+            resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("error", e.getMessage())));
         }
     }
 }
