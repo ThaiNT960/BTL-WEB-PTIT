@@ -14,13 +14,78 @@ import java.util.List;
 
 public class PostDAO {
 
+    /**
+     * Lấy tất cả bài viết ĐÃ DUYỆT (cho trang user).
+     */
     public List<Post> findAllOrderByCreatedAtDesc() {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            return session.createQuery("FROM Post p JOIN FETCH p.user ORDER BY p.createdAt DESC", Post.class).list();
+            return session.createQuery(
+                "FROM Post p JOIN FETCH p.user WHERE p.status = 'APPROVED' ORDER BY p.createdAt DESC", Post.class
+            ).list();
         } catch (Exception e) {
             e.printStackTrace();
         }
         return new ArrayList<>();
+    }
+
+    /**
+     * Tìm kiếm bài viết đã duyệt theo từ khóa (nội dung hoặc tên tác giả).
+     */
+    public List<Post> searchApproved(String keyword) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            String kw = "%" + keyword.toLowerCase() + "%";
+            return session.createQuery(
+                "FROM Post p JOIN FETCH p.user WHERE p.status = 'APPROVED' " +
+                "AND (LOWER(p.content) LIKE :kw OR LOWER(p.user.fullName) LIKE :kw) " +
+                "ORDER BY p.createdAt DESC", Post.class
+            ).setParameter("kw", kw).list();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return new ArrayList<>();
+    }
+
+    /**
+     * Lấy tất cả bài viết (cho admin).
+     */
+    public List<Post> findAllForAdmin() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            return session.createQuery(
+                "FROM Post p JOIN FETCH p.user ORDER BY p.createdAt DESC", Post.class
+            ).list();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return new ArrayList<>();
+    }
+
+    /**
+     * Lấy bài viết theo trạng thái.
+     */
+    public List<Post> findByStatus(String status) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            return session.createQuery(
+                "FROM Post p JOIN FETCH p.user WHERE p.status = :status ORDER BY p.createdAt DESC", Post.class
+            ).setParameter("status", status).list();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return new ArrayList<>();
+    }
+
+    /**
+     * Đếm bài viết theo trạng thái.
+     */
+    public long countByStatus(String status) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Long count = session.createQuery(
+                "SELECT COUNT(p) FROM Post p WHERE p.status = :status", Long.class
+            ).setParameter("status", status).uniqueResult();
+            return count != null ? count : 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
     }
 
     public Post findById(long id) {
@@ -36,8 +101,13 @@ public class PostDAO {
     }
 
     public long save(String content, String imageUrl, long userId) {
+        return save(content, imageUrl, userId, "APPROVED", null, null);
+    }
+
+    public long save(String content, String imageUrl, long userId,
+                     String status, String moderationLabel, Double moderationConfidence) {
         Transaction transaction = null;
-        System.out.println("[PostDAO] save() called: userId=" + userId + ", content=" + content + ", imageUrl=" + imageUrl);
+        System.out.println("[PostDAO] save() called: userId=" + userId + ", content=" + content + ", status=" + status);
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             transaction = session.beginTransaction();
             User user = session.get(User.class, userId);
@@ -48,9 +118,12 @@ public class PostDAO {
                 post.setImageUrl(imageUrl);
                 post.setUser(user);
                 post.setCreatedAt(LocalDateTime.now());
+                post.setStatus(status);
+                post.setModerationLabel(moderationLabel);
+                post.setModerationConfidence(moderationConfidence);
                 session.save(post);
                 transaction.commit();
-                System.out.println("[PostDAO] Post saved successfully with id=" + post.getId());
+                System.out.println("[PostDAO] Post saved with id=" + post.getId() + ", status=" + status);
                 return post.getId();
             }
         } catch (Exception e) {
@@ -62,6 +135,50 @@ public class PostDAO {
             throw new RuntimeException("Database error: " + e.getMessage(), e);
         }
         throw new RuntimeException("User not found: " + userId);
+    }
+
+    /**
+     * Cập nhật trạng thái bài viết (APPROVED / REJECTED).
+     */
+    public void updatePostStatus(long postId, String status) {
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            Post post = session.get(Post.class, postId);
+            if (post != null) {
+                post.setStatus(status);
+                session.update(post);
+            }
+            transaction.commit();
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Cập nhật kết quả kiểm duyệt AI cho bài viết.
+     */
+    public void updateModerationResult(long postId, String status, String label, Double confidence) {
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            Post post = session.get(Post.class, postId);
+            if (post != null) {
+                post.setStatus(status);
+                post.setModerationLabel(label);
+                post.setModerationConfidence(confidence);
+                session.update(post);
+            }
+            transaction.commit();
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            e.printStackTrace();
+        }
     }
 
     public void delete(long id) {

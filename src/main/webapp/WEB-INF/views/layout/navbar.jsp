@@ -1,7 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <nav class="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm" style="height:60px">
-    <div class="max-w-5xl mx-auto px-5 h-full flex items-center justify-between gap-4">
+    <div class="max-w-6xl mx-auto px-5 h-full flex items-center justify-between gap-4">
         <a href="${pageContext.request.contextPath}/HomeServlet" class="flex items-center gap-2 text-primary font-bold text-lg flex-shrink-0 no-underline">
             <img src="${pageContext.request.contextPath}/img/logo_ptit.svg" alt="PTIT Logo" class="w-10 h-10 object-contain">
             PTIT Social

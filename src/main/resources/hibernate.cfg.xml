@@ -8,7 +8,7 @@
         <property name="connection.driver_class">com.mysql.cj.jdbc.Driver</property>
         <property name="connection.url">jdbc:mysql://localhost:3306/ptitsocialchat?useUnicode=true&amp;characterEncoding=utf8&amp;serverTimezone=UTC</property>
         <property name="connection.username">root</property>
-        <property name="connection.password">matkhau_moi</property>
+        <property name="connection.password">123456</property>
 
         <!-- JDBC connection pool (use the built-in) -->
         <property name="connection.pool_size">5</property>
@@ -33,6 +33,8 @@
         <mapping class="com.ptit.socialchat.model.FriendRequest"/>
         <mapping class="com.ptit.socialchat.model.Friendship"/>
         <mapping class="com.ptit.socialchat.model.Message"/>
+        <mapping class="com.ptit.socialchat.model.ModerationSettings"/>
+        <mapping class="com.ptit.socialchat.model.Announcement"/>
 
     </session-factory>
 </hibernate-configuration>

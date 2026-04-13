@@ -116,3 +116,70 @@
 .fade-up {
     animation: fadeUp 0.2s ease-out;
 }
+
+/* Hashtag inline tags — base */
+.hashtag-tag {
+    display: inline;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 0.875em;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+/* Default / unknown tags */
+.hashtag-tag.hashtag-default {
+    background: #eff6ff;
+    color: #2563eb;
+}
+.hashtag-tag.hashtag-default:hover { background: #dbeafe; }
+
+/* Blue — #just-for-fun */
+.hashtag-tag.hashtag-blue {
+    background: #eff6ff;
+    color: #2563eb;
+}
+.hashtag-tag.hashtag-blue:hover { background: #dbeafe; }
+
+/* Red — #quan-trọng */
+.hashtag-tag.hashtag-red {
+    background: #fef2f2;
+    color: #ef4444;
+}
+.hashtag-tag.hashtag-red:hover { background: #fee2e2; }
+
+/* Green — #hỏi-đáp */
+.hashtag-tag.hashtag-green {
+    background: #f0fdf4;
+    color: #16a34a;
+}
+.hashtag-tag.hashtag-green:hover { background: #dcfce7; }
+
+/* Purple — #chia-sẻ */
+.hashtag-tag.hashtag-purple {
+    background: #faf5ff;
+    color: #9333ea;
+}
+.hashtag-tag.hashtag-purple:hover { background: #f3e8ff; }
+
+/* Yellow — #học-tập */
+.hashtag-tag.hashtag-yellow {
+    background: #fefce8;
+    color: #a16207;
+}
+.hashtag-tag.hashtag-yellow:hover { background: #fef9c3; }
+
+/* Line clamp for truncation */
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Fade-in animation */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
