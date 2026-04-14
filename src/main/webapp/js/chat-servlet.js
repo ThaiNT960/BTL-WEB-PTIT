@@ -267,8 +267,12 @@ async function loadChatHistory(scrollBottom) {
 
 function appendMessage(message, type, isLastNode, container) {
     const msgs = container || document.getElementById('chatMessages');
+
+    if (document.getElementById(`msg-${message.id}`)) return;
+
     const timeStr = formatMessageTime(message.timestamp);
     const div = document.createElement('div');
+    div.id = `msg-${message.id}`;
     div.className = `flex ${type === 'sent' ? 'justify-end' : 'justify-start'} mb-1 relative group/msg`;
 
     let contentHtml = "";
