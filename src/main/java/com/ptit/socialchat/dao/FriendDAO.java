@@ -108,6 +108,19 @@ public class FriendDAO {
         }
     }
 
+    public long getPendingRequestCount(long receiverId) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Long count = session.createQuery(
+                    "SELECT count(fr) FROM FriendRequest fr WHERE fr.receiver.id = :rId AND fr.status = 'PENDING'", Long.class)
+                    .setParameter("rId", receiverId)
+                    .uniqueResult();
+            return count != null ? count : 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
     public List<FriendRequest> getPendingRequests(long receiverId) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             return session.createQuery("FROM FriendRequest fr JOIN FETCH fr.sender WHERE fr.receiver.id = :receiverId AND fr.status = 'PENDING' ORDER BY fr.createdAt DESC", FriendRequest.class)

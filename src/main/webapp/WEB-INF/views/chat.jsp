@@ -103,6 +103,9 @@
                                                     <p class="font-semibold text-sm text-gray-900 truncate">
                                                         ${f.fullName}</p>
                                                 </div>
+                                                <div class="flex-shrink-0">
+                                                    <span class="unread-badge hidden bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full"></span>
+                                                </div>
                                             </div>
                                         </c:forEach>
                                     </c:otherwise>
@@ -127,6 +130,11 @@
                                         <p class="text-xs text-gray-400">Xem trang cá nhân</p>
                                     </div>
                                 </a>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="clearHistory()" class="text-gray-400 hover:text-red-500 transition p-2" title="Xóa lịch sử trò chuyện">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div id="chatPlaceholder"
                                 class="flex-1 flex items-center justify-center text-gray-400 text-sm">
@@ -184,7 +192,7 @@
                 // Variables are read from body dataset
                 var CHAT_WITH = '<c:out value="${param.chatWith}"/>'; // from URL param ?chatWith=username
             </script>
-            <script src="${pageContext.request.contextPath}/js/api-client.js?v=2.2"></script>
+            <script src="${pageContext.request.contextPath}/js/api-client.js?v=2.3"></script>
             <script src="${pageContext.request.contextPath}/js/chat-servlet.js?v=2.2"></script>
         </body>
 

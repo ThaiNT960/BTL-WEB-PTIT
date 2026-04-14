@@ -142,7 +142,7 @@
             <script>
                 // Read from body dataset
             </script>
-            <script src="${pageContext.request.contextPath}/js/api-client.js"></script>
+            <script src="${pageContext.request.contextPath}/js/api-client.js?v=2.3"></script>
             <script src="${pageContext.request.contextPath}/js/friend-servlet.js"></script>
         </body>
 

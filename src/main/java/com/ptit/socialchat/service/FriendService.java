@@ -34,6 +34,10 @@ public class FriendService {
         }
 
         friendDAO.sendRequest(senderId, receiver.getId());
+        
+        java.util.Map<String, Object> event = new java.util.HashMap<>();
+        event.put("type", "FRIEND_REQUEST");
+        com.ptit.socialchat.websocket.ChatWebSocket.sendToUser(receiver.getId(), event);
     }
 
     public void acceptFriendRequest(long requestId, long currentUserId) throws IllegalArgumentException {
@@ -58,6 +62,16 @@ public class FriendService {
         } else {
             friendDAO.updateRequestStatus(requestId, "ACCEPTED");
         }
+        
+        java.util.Map<String, Object> event = new java.util.HashMap<>();
+        event.put("type", "FRIEND_REQUEST_ACCEPTED");
+        event.put("partnerUsername", fr.getReceiver().getUsername());
+        com.ptit.socialchat.websocket.ChatWebSocket.sendToUser(fr.getSender().getId(), event);
+        
+        java.util.Map<String, Object> eventSelf = new java.util.HashMap<>();
+        eventSelf.put("type", "FRIEND_REQUEST_ACCEPTED");
+        eventSelf.put("partnerUsername", fr.getSender().getUsername());
+        com.ptit.socialchat.websocket.ChatWebSocket.sendToUser(currentUserId, eventSelf);
     }
 
     public void acceptFriendRequestByUsername(long currentUserId, String senderUsername) throws IllegalArgumentException {
@@ -96,6 +110,11 @@ public class FriendService {
         }
 
         friendDAO.updateRequestStatus(requestId, "REJECTED");
+        
+        java.util.Map<String, Object> event = new java.util.HashMap<>();
+        event.put("type", "FRIEND_REQUEST_REJECTED");
+        event.put("partnerUsername", fr.getReceiver().getUsername());
+        com.ptit.socialchat.websocket.ChatWebSocket.sendToUser(fr.getSender().getId(), event);
     }
 
     public void unfriend(long currentUserId, String targetUsername) throws IllegalArgumentException {
@@ -110,6 +129,19 @@ public class FriendService {
         }
 
         friendDAO.deleteFriendship(currentUserId, target.getId());
+        
+        User current = userDAO.findById(currentUserId);
+        if (current != null) {
+            java.util.Map<String, Object> event = new java.util.HashMap<>();
+            event.put("type", "UNFRIENDED");
+            event.put("partnerUsername", current.getUsername());
+            com.ptit.socialchat.websocket.ChatWebSocket.sendToUser(target.getId(), event);
+            
+            java.util.Map<String, Object> eventSelf = new java.util.HashMap<>();
+            eventSelf.put("type", "UNFRIENDED_SELF");
+            eventSelf.put("partnerUsername", target.getUsername());
+            com.ptit.socialchat.websocket.ChatWebSocket.sendToUser(currentUserId, eventSelf);
+        }
     }
 
     public void cancelRequest(long senderId, String targetUsername) throws IllegalArgumentException {
@@ -120,5 +152,9 @@ public class FriendService {
         if (target == null) throw new IllegalArgumentException("Người dùng không tồn tại.");
 
         friendDAO.cancelFriendRequest(senderId, target.getId());
+        
+        java.util.Map<String, Object> event = new java.util.HashMap<>();
+        event.put("type", "FRIEND_REQUEST_CANCELLED");
+        com.ptit.socialchat.websocket.ChatWebSocket.sendToUser(target.getId(), event);
     }
 }

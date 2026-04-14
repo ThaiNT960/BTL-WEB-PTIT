@@ -194,7 +194,7 @@ async function unfriend(username, btn) {
         }, false);
 
         if (res && res.ok) {
-            location.reload();
+            if (typeof refreshFriendData === 'function') refreshFriendData();
         }
     } catch (e) { console.error(e); }
 }
@@ -218,3 +218,99 @@ async function cancelRequest(username, btn) {
         }
     } catch (e) { console.error(e); }
 }
+
+async function fetchAndRenderRequests() {
+    const container = document.getElementById('friendRequests');
+    if (!container) return; // Only process if on friend.jsp
+    try {
+        const requests = await apiFetch(CTX + '/FriendServlet?type=requests');
+        if (!requests || requests.length === 0) {
+            container.innerHTML = '<p class="text-center text-gray-400 text-sm py-6">Không có lời mời kết bạn nào</p>';
+            return;
+        }
+        
+        container.innerHTML = requests.map(req => {
+            const eFullName = escapeHtml(req.senderFullName || req.senderUsername);
+            const eUsername = escapeHtml(req.senderUsername);
+            const initial = eFullName.charAt(0).toUpperCase();
+            const eAvatar = escapeHtml(req.senderAvatar || '');
+            const avtHtml = eAvatar ? `<img src="${eAvatar}" class="w-11 h-11 rounded-full object-cover">` : `<div class="w-11 h-11 rounded-full bg-primary flex items-center justify-center text-white font-bold">${initial}</div>`;
+            
+            return `
+            <div class="flex items-center gap-3 py-3 border-b border-gray-100 last:border-0">
+                <a href="${CTX}/ProfileServlet?username=${eUsername}" class="flex-shrink-0 hover:opacity-80 transition">
+                    ${avtHtml}
+                </a>
+                <div class="flex-1 min-w-0">
+                    <a href="${CTX}/ProfileServlet?username=${eUsername}" class="hover:underline">
+                        <p class="font-semibold text-sm text-gray-900">${eFullName}</p>
+                    </a>
+                </div>
+                <div class="flex gap-2">
+                    <button data-req-id="${req.id}" data-action="accept" class="js-friend-action text-xs bg-primary hover:bg-primary-dark text-white font-semibold px-3 py-1.5 rounded-full transition">Chấp nhận</button>
+                    <button data-req-id="${req.id}" data-action="reject" class="js-friend-action text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium px-3 py-1.5 rounded-full transition">Từ chối</button>
+                </div>
+            </div>`;
+        }).join('');
+    } catch (e) { console.error(e); }
+}
+
+async function fetchAndRenderFriends() {
+    const container = document.getElementById('friendsList');
+    if (!container) return; // Only process if on friend.jsp
+    try {
+        const friends = await apiFetch(CTX + '/FriendServlet?type=friends');
+        // Update counter in Header
+        const headerCount = document.querySelector('h2 > i.fa-user-friends')?.parentElement;
+        if (headerCount) {
+             headerCount.innerHTML = `<i class="fas fa-user-friends text-primary mr-2"></i>Bạn bè (${friends ? friends.length : 0})`;
+        }
+
+        if (!friends || friends.length === 0) {
+            container.innerHTML = '<p class="text-center text-gray-400 text-sm py-6">Bạn chưa có bạn bè nào</p>';
+            return;
+        }
+
+        container.innerHTML = friends.map(f => {
+            const eFullName = escapeHtml(f.fullName || f.username);
+            const eUsername = escapeHtml(f.username);
+            const eAvatar = escapeHtml(f.avatar);
+            const initial = eFullName.charAt(0).toUpperCase();
+            const avtHtml = eAvatar ? `<img src="${eAvatar}" class="w-11 h-11 rounded-full object-cover">` : `<div class="w-11 h-11 rounded-full bg-primary flex items-center justify-center text-white font-bold">${initial}</div>`;
+            
+            return `
+            <div class="flex items-center gap-3 py-3 border-b border-gray-100 last:border-0">
+                <a href="${CTX}/ProfileServlet?username=${eUsername}" class="flex-shrink-0 hover:opacity-80 transition">
+                    ${avtHtml}
+                </a>
+                <div class="flex-1 min-w-0">
+                    <a href="${CTX}/ProfileServlet?username=${eUsername}" class="hover:underline">
+                        <p class="font-semibold text-sm text-gray-900">${eFullName}</p>
+                    </a>
+                </div>
+                <div class="flex gap-2">
+                    <a href="${CTX}/ChatServlet?chatWith=${eUsername}" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium px-3 py-1.5 rounded-full transition">
+                        <i class="fas fa-comment-dots"></i> Nhắn tin
+                    </a>
+                    <button data-username="${eUsername}" data-action="unfriend" class="js-friend-action text-xs bg-red-50 hover:bg-red-100 text-red-600 font-medium px-3 py-1.5 rounded-full transition">
+                        Hủy kết bạn
+                    </button>
+                </div>
+            </div>`;
+        }).join('');
+    } catch (e) { console.error(e); }
+}
+
+function refreshFriendData() {
+    fetchAndRenderRequests();
+    fetchAndRenderFriends();
+}
+
+window.addEventListener('wsMessage', (e) => {
+    const payload = e.detail;
+    if (!payload) return;
+    const updateTriggers = ['FRIEND_REQUEST', 'FRIEND_REQUEST_ACCEPTED', 'FRIEND_REQUEST_REJECTED', 'UNFRIENDED', 'UNFRIENDED_SELF', 'FRIEND_REQUEST_CANCELLED'];
+    if (updateTriggers.includes(payload.type)) {
+        refreshFriendData();
+    }
+});

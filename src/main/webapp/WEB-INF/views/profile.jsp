@@ -13,13 +13,11 @@
             <link rel="stylesheet" href="${pageContext.request.contextPath}/css/app.css?v=3.1">
         </head>
 
-        <body class="bg-gray-100 font-sans text-gray-900"
-              data-username="<c:out value='${sessionScope.username}'/>"
-              data-fullname="<c:out value='${sessionScope.fullName}'/>"
-              data-avatar="<c:out value='${sessionScope.avatar}'/>"
-              data-role="<c:out value='${sessionScope.role}'/>"
-              data-ctx="<c:out value='${pageContext.request.contextPath}'/>"
-              data-csrftoken="<c:out value='${sessionScope.csrfToken}'/>">
+        <body class="bg-gray-100 font-sans text-gray-900" data-username="<c:out value='${sessionScope.username}'/>"
+            data-fullname="<c:out value='${sessionScope.fullName}'/>"
+            data-avatar="<c:out value='${sessionScope.avatar}'/>" data-role="<c:out value='${sessionScope.role}'/>"
+            data-ctx="<c:out value='${pageContext.request.contextPath}'/>"
+            data-csrftoken="<c:out value='${sessionScope.csrfToken}'/>">
 
             <!-- NAVBAR -->
             <!-- NAVBAR -->
@@ -44,67 +42,76 @@
                                                 onerror="this.style.display='none'" />
                                         </c:when>
                                         <c:otherwise>
-                                            <c:out value="${empty profileUser.fullName ? profileUser.username.substring(0,1).toUpperCase() : profileUser.fullName.substring(0,1).toUpperCase()}" />
+                                            <c:out
+                                                value="${empty profileUser.fullName ? profileUser.username.substring(0,1).toUpperCase() : profileUser.fullName.substring(0,1).toUpperCase()}" />
                                         </c:otherwise>
                                     </c:choose>
                                 </div>
                                 <div class="flex-1 mb-1">
-                                    <h1 class="text-xl font-bold text-gray-900" id="profileName"><c:out value="${profileUser.fullName}" /></h1>
+                                    <h1 class="text-xl font-bold text-gray-900" id="profileName">
+                                        <c:out value="${profileUser.fullName}" />
+                                    </h1>
                                 </div>
                                 <div class="flex gap-2">
-                                <c:if test="${profileUser.id == sessionScope.userId}">
-                                    <button onclick="document.getElementById('editModal').classList.remove('hidden')"
-                                        class="flex items-center gap-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-4 py-2 rounded-full transition">
-                                        <i class="fas fa-edit"></i> Chỉnh sửa
-                                    </button>
-                                    <button onclick="document.getElementById('passwordModal').classList.remove('hidden')"
-                                        class="flex items-center gap-2 text-sm bg-primary hover:bg-primary-dark text-white font-medium px-4 py-2 rounded-full transition">
-                                        <i class="fas fa-key"></i> Đổi mật khẩu
-                                    </button>
-                                </c:if>
-                                <c:if test="${profileUser.id != sessionScope.userId}">
-                                    <%-- Friend action buttons --%>
-                                    <div id="friendActionArea">
-                                        <c:choose>
-                                            <c:when test="${relationshipStatus == 'FRIENDS'}">
-                                                <div class="flex gap-2">
-                                                    <a href="${pageContext.request.contextPath}/chat?chatWith=${profileUser.username}"
-                                                        class="flex items-center gap-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium px-4 py-2 rounded-full transition">
-                                                        <i class="fas fa-comment-dots"></i> Nhắn tin
-                                                    </a>
-                                                    <button data-username="${profileUser.username}" data-action="unfriend"
-                                                        class="js-friend-action flex items-center gap-2 text-sm bg-red-50 hover:bg-red-100 text-red-600 font-medium px-4 py-2 rounded-full transition">
-                                                        <i class="fas fa-user-minus"></i> Hủy kết bạn
-                                                    </button>
-                                                </div>
-                                            </c:when>
-                                            <c:when test="${relationshipStatus == 'PENDING_SENT'}">
-                                                <button data-username="${profileUser.username}" data-action="cancel"
-                                                    class="js-friend-action flex items-center gap-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-500 font-medium px-4 py-2 rounded-full transition">
-                                                    <i class="fas fa-clock"></i> Thu hồi lời mời
-                                                </button>
-                                            </c:when>
-                                            <c:when test="${relationshipStatus == 'PENDING_RECEIVED'}">
-                                                <div class="flex gap-2">
-                                                    <button data-req-id="${friendRequestId}" data-action="accept"
-                                                        class="js-friend-action flex items-center gap-2 text-sm bg-primary hover:bg-primary-dark text-white font-semibold px-4 py-2 rounded-full transition">
-                                                        <i class="fas fa-check"></i> Chấp nhận
-                                                    </button>
-                                                    <button data-req-id="${friendRequestId}" data-action="reject"
-                                                        class="js-friend-action flex items-center gap-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium px-4 py-2 rounded-full transition">
-                                                        <i class="fas fa-times"></i> Từ chối
-                                                    </button>
-                                                </div>
-                                            </c:when>
-                                            <c:otherwise>
-                                                <button onclick="sendRequest('${profileUser.username}', this)"
-                                                    class="flex items-center gap-2 text-sm bg-primary hover:bg-primary-dark text-white font-semibold px-4 py-2 rounded-full transition">
-                                                    <i class="fas fa-user-plus"></i> Kết bạn
-                                                </button>
-                                            </c:otherwise>
-                                        </c:choose>
-                                    </div>
-                                </c:if>
+                                    <c:if test="${profileUser.id == sessionScope.userId}">
+                                        <button
+                                            onclick="document.getElementById('editModal').classList.remove('hidden')"
+                                            class="flex items-center gap-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-4 py-2 rounded-full transition">
+                                            <i class="fas fa-edit"></i> Chỉnh sửa
+                                        </button>
+                                        <button
+                                            onclick="document.getElementById('passwordModal').classList.remove('hidden')"
+                                            class="flex items-center gap-2 text-sm bg-primary hover:bg-primary-dark text-white font-medium px-4 py-2 rounded-full transition">
+                                            <i class="fas fa-key"></i> Đổi mật khẩu
+                                        </button>
+                                    </c:if>
+                                    <c:if test="${profileUser.id != sessionScope.userId}">
+                                        <%-- Friend action buttons --%>
+                                            <div id="friendActionArea">
+                                                <c:choose>
+                                                    <c:when test="${relationshipStatus == 'FRIENDS'}">
+                                                        <div class="flex gap-2">
+                                                            <a href="${pageContext.request.contextPath}/chat?chatWith=${profileUser.username}"
+                                                                class="flex items-center gap-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium px-4 py-2 rounded-full transition">
+                                                                <i class="fas fa-comment-dots"></i> Nhắn tin
+                                                            </a>
+                                                            <button data-username="${profileUser.username}"
+                                                                data-action="unfriend"
+                                                                class="js-friend-action flex items-center gap-2 text-sm bg-red-50 hover:bg-red-100 text-red-600 font-medium px-4 py-2 rounded-full transition">
+                                                                <i class="fas fa-user-minus"></i> Hủy kết bạn
+                                                            </button>
+                                                        </div>
+                                                    </c:when>
+                                                    <c:when test="${relationshipStatus == 'PENDING_SENT'}">
+                                                        <button data-username="${profileUser.username}"
+                                                            data-action="cancel"
+                                                            class="js-friend-action flex items-center gap-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-500 font-medium px-4 py-2 rounded-full transition">
+                                                            <i class="fas fa-clock"></i> Thu hồi lời mời
+                                                        </button>
+                                                    </c:when>
+                                                    <c:when test="${relationshipStatus == 'PENDING_RECEIVED'}">
+                                                        <div class="flex gap-2">
+                                                            <button data-req-id="${friendRequestId}"
+                                                                data-action="accept"
+                                                                class="js-friend-action flex items-center gap-2 text-sm bg-primary hover:bg-primary-dark text-white font-semibold px-4 py-2 rounded-full transition">
+                                                                <i class="fas fa-check"></i> Chấp nhận
+                                                            </button>
+                                                            <button data-req-id="${friendRequestId}"
+                                                                data-action="reject"
+                                                                class="js-friend-action flex items-center gap-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium px-4 py-2 rounded-full transition">
+                                                                <i class="fas fa-times"></i> Từ chối
+                                                            </button>
+                                                        </div>
+                                                    </c:when>
+                                                    <c:otherwise>
+                                                        <button onclick="sendRequest('${profileUser.username}', this)"
+                                                            class="flex items-center gap-2 text-sm bg-primary hover:bg-primary-dark text-white font-semibold px-4 py-2 rounded-full transition">
+                                                            <i class="fas fa-user-plus"></i> Kết bạn
+                                                        </button>
+                                                    </c:otherwise>
+                                                </c:choose>
+                                            </div>
+                                    </c:if>
                                 </div>
                             </div>
                         </div>
@@ -160,7 +167,8 @@
                     </div>
                     <div class="flex gap-3 mt-6">
                         <button onclick="changePassword()"
-                            class="flex-1 bg-primary hover:bg-primary-dark text-white font-semibold py-2.5 rounded-xl transition text-sm">Xác nhận</button>
+                            class="flex-1 bg-primary hover:bg-primary-dark text-white font-semibold py-2.5 rounded-xl transition text-sm">Xác
+                            nhận</button>
                         <button onclick="document.getElementById('passwordModal').classList.add('hidden')"
                             class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl transition text-sm">Hủy</button>
                     </div>
@@ -180,19 +188,19 @@
                     if (avatarFileInput.files.length > 0) {
                         formData.append('avatarFile', avatarFileInput.files[0]);
                     }
-                    
-                    apiFetch(CTX + '/ProfileServlet', { 
-                        method: 'POST', 
-                        body: formData 
+
+                    apiFetch(CTX + '/ProfileServlet', {
+                        method: 'POST',
+                        body: formData
                     }, false).then(res => res.json()).then(data => {
-                            if (data.error) {
-                                alert(data.error);
-                                return;
-                            }
-                            document.getElementById('editModal').classList.add('hidden');
-                            document.getElementById('profileName').textContent = data.fullName;
-                            alert('Đã cập nhật hồ sơ!');
-                            location.reload();
+                        if (data.error) {
+                            alert(data.error);
+                            return;
+                        }
+                        document.getElementById('editModal').classList.add('hidden');
+                        document.getElementById('profileName').textContent = data.fullName;
+                        alert('Đã cập nhật hồ sơ!');
+                        location.reload();
                     }).catch(err => {
                         console.error('Error fetching', err);
                         alert('Đã có lỗi xảy ra!');
@@ -207,12 +215,12 @@
                     params.append('action', 'change_password');
                     params.append('oldPassword', oldPassword);
                     params.append('newPassword', newPassword);
-                    apiFetch(CTX + '/ProfileServlet', { 
-                        method: 'POST', 
+                    apiFetch(CTX + '/ProfileServlet', {
+                        method: 'POST',
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: params.toString() 
+                        body: params.toString()
                     }).then(data => {
-                        if(data && data.status === 'ok') {
+                        if (data && data.status === 'ok') {
                             alert('Đổi mật khẩu thành công!');
                             document.getElementById('passwordModal').classList.add('hidden');
                             document.getElementById('oldPassword').value = '';
@@ -221,7 +229,7 @@
                     });
                 }
             </script>
-            <script src="${pageContext.request.contextPath}/js/api-client.js?v=3.1"></script>
+            <script src="${pageContext.request.contextPath}/js/api-client.js?v=2.3"></script>
             <c:if test="${profileUser.id != sessionScope.userId}">
                 <script src="${pageContext.request.contextPath}/js/friend-servlet.js?v=3.1"></script>
             </c:if>

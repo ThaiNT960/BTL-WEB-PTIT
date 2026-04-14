@@ -26,6 +26,24 @@ public class ChatServlet extends HttpServlet {
         long currentUserId = (long) session.getAttribute("userId");
         String action = req.getParameter("action");
 
+        if ("stats".equals(action)) {
+            try {
+                long totalUnread = chatService.getTotalUnreadConversations(currentUserId);
+                Map<String, Long> unreadCounts = chatService.getUnreadCounts(currentUserId);
+                long friendRequestsCount = friendDAO.getPendingRequestCount(currentUserId);
+                
+                Map<String, Object> responseData = new HashMap<>();
+                responseData.put("totalUnread", totalUnread);
+                responseData.put("unreadCounts", unreadCounts);
+                responseData.put("friendRequestsCount", friendRequestsCount);
+                resp.setContentType("application/json;charset=UTF-8");
+                resp.getWriter().write(gson.toJson(responseData));
+            } catch (Exception e) {
+                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            }
+            return;
+        }
+
         if ("history".equals(action)) {
             // Return JSON chat history between current user and another user
             String otherUsername = req.getParameter("otherUser");
@@ -50,14 +68,19 @@ public class ChatServlet extends HttpServlet {
                     map.put("senderFullName", msg.getSender().getFullName());
                     map.put("receiverUsername", msg.getReceiver().getUsername());
                     map.put("imageUrl", msg.getImageUrl() != null ? msg.getImageUrl() : "");
+                    map.put("isRead", msg.isRead());
                     // add senderAvatar securely
                     map.put("senderAvatar", msg.getSender().getAvatar() != null ? msg.getSender().getAvatar() : "");
+                    map.put("isRecalled", msg.isRecalled());
                     result.add(map);
                 }
                 
+                long lastReadMessageId = chatService.getLastReadMessageId(currentUserId, otherUsername);
+
                 Map<String, Object> responseData = new HashMap<>();
                 responseData.put("isFriend", isFriend);
                 responseData.put("messages", result);
+                responseData.put("lastReadMessageId", lastReadMessageId);
 
                 resp.setContentType("application/json;charset=UTF-8");
                 resp.getWriter().write(gson.toJson(responseData));
@@ -114,6 +137,34 @@ public class ChatServlet extends HttpServlet {
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 resp.setContentType("application/json;charset=UTF-8");
                 resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("error", e.getMessage())));
+            } catch (Exception e) {
+                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            }
+        } else if ("markRead".equals(action)) {
+            String senderUsername = req.getParameter("senderUsername");
+            try {
+                chatService.markMessagesAsRead(currentUserId, senderUsername);
+                resp.setContentType("application/json;charset=UTF-8");
+                resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("status", "ok")));
+            } catch (Exception e) {
+                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            }
+        } else if ("clearHistory".equals(action)) {
+            String otherUser = req.getParameter("otherUser");
+            try {
+                chatService.clearChatHistory(currentUserId, otherUser);
+                resp.setContentType("application/json;charset=UTF-8");
+                resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("status", "ok")));
+            } catch (Exception e) {
+                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            }
+        } else if ("recall".equals(action)) {
+            String msgIdStr = req.getParameter("messageId");
+            try {
+                long messageId = Long.parseLong(msgIdStr);
+                chatService.recallMessage(messageId, currentUserId);
+                resp.setContentType("application/json;charset=UTF-8");
+                resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("status", "ok")));
             } catch (Exception e) {
                 resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             }

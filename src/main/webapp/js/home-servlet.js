@@ -1,7 +1,7 @@
 // home-servlet.js - dùng với home.jsp, gọi /PostServlet thay vì /api/posts
 // v3.0 — search, hashtags, announcements, topics
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     loadPosts();
     setupPostForm();
     loadAnnouncements();
@@ -54,7 +54,7 @@ function showModerationNotice(type, message) {
         + '<button onclick="this.parentElement.remove()" class="text-gray-400 hover:text-gray-600 text-sm"><i class="fas fa-times"></i></button>';
 
     feed.insertBefore(notice, feed.firstChild);
-    setTimeout(function() { if (notice.parentNode) notice.remove(); }, 8000);
+    setTimeout(function () { if (notice.parentNode) notice.remove(); }, 8000);
 }
 
 // ═══════════════════════════════════════════════════
@@ -63,11 +63,11 @@ function showModerationNotice(type, message) {
 function escapeHtml(unsafe) {
     if (!unsafe) return "";
     return String(unsafe)
-         .replace(/&/g, "&amp;")
-         .replace(/</g, "&lt;")
-         .replace(/>/g, "&gt;")
-         .replace(/"/g, "&quot;")
-         .replace(/'/g, "&#039;");
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 function formatTime(dateStr) {
@@ -99,17 +99,17 @@ function formatDate(dateStr) {
  */
 var TAG_COLORS = {
     '#just-for-fun': 'hashtag-blue',
-    '#quan-trọng':   'hashtag-red',
-    '#hỏi-đáp':     'hashtag-green',
-    '#chia-sẻ':     'hashtag-purple',
-    '#học-tập':     'hashtag-yellow'
+    '#quan-trọng': 'hashtag-red',
+    '#hỏi-đáp': 'hashtag-green',
+    '#chia-sẻ': 'hashtag-purple',
+    '#học-tập': 'hashtag-yellow'
 };
 
 function renderContent(content) {
     if (!content) return '';
     var escaped = escapeHtml(content);
     // Replace #hashtag patterns with styled spans
-    escaped = escaped.replace(/(#[\w\u00C0-\u024F\u1E00-\u1EFF-]+)/g, function(match) {
+    escaped = escaped.replace(/(#[\w\u00C0-\u024F\u1E00-\u1EFF-]+)/g, function (match) {
         var lower = match.toLowerCase();
         var colorClass = TAG_COLORS[lower] || 'hashtag-default';
         return '<span class="hashtag-tag ' + colorClass + '">' + match + '</span>';
@@ -145,11 +145,12 @@ async function loadPosts(searchQuery) {
                 + (searchQuery ? 'Không tìm thấy bài viết nào phù hợp.' : 'Chưa có bài viết nào.')
                 + '</div>';
         } else {
-            posts.forEach(function(post) { renderPost(post, feed); });
+            posts.forEach(function (post) { renderPost(post, feed); });
         }
 
         // Extract and render topics from all loaded posts
         extractTopics(allPostsData);
+        posts.forEach(function (post) { renderPost(post, feed); });
     } catch (e) { console.error('loadPosts error:', e); }
 }
 
@@ -173,7 +174,7 @@ function renderPost(post, container) {
 
     // Build comments HTML
     var commentsHtml = '';
-    (post.comments || []).forEach(function(c) {
+    (post.comments || []).forEach(function (c) {
         var cInit = (c.userFullName || c.username || 'U').charAt(0).toUpperCase();
         var cFullNameOrUsername = escapeHtml(c.userFullName || c.username);
         var cAvt;
@@ -202,14 +203,14 @@ function renderPost(post, container) {
     div.id = 'post-' + post.id;
     div.className = 'bg-white rounded-2xl shadow-sm mb-4 overflow-hidden';
     var canComment = post.isFriend || isOwner || isAdmin;
-    var commentInputHtml = canComment ? 
-      '<div class="flex gap-2 mt-2">'
-    + '<input type="text" id="comment-input-' + post.id + '" placeholder="Viết bình luận..."'
-    + ' class="flex-1 bg-white border border-gray-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-primary transition"'
-    + ' onkeyup="if(event.key===\'Enter\') submitComment(' + post.id + ', this)">'
-    + '<button onclick="submitComment(' + post.id + ', document.getElementById(\'comment-input-' + post.id + '\'))" class="bg-primary hover:bg-primary-dark text-white text-xs font-semibold px-4 py-2 rounded-full transition">Gửi</button>'
-    + '</div>'
-    : '<p class="text-xs text-gray-400 italic text-center mt-3 mb-1">Chỉ bạn bè mới có thể bình luận.</p>';
+    var commentInputHtml = canComment ?
+        '<div class="flex gap-2 mt-2">'
+        + '<input type="text" id="comment-input-' + post.id + '" placeholder="Viết bình luận..."'
+        + ' class="flex-1 bg-white border border-gray-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-primary transition"'
+        + ' onkeyup="if(event.key===\'Enter\') submitComment(' + post.id + ', this)">'
+        + '<button onclick="submitComment(' + post.id + ', document.getElementById(\'comment-input-' + post.id + '\'))" class="bg-primary hover:bg-primary-dark text-white text-xs font-semibold px-4 py-2 rounded-full transition">Gửi</button>'
+        + '</div>'
+        : '<p class="text-xs text-gray-400 italic text-center mt-3 mb-1">Chỉ bạn bè mới có thể bình luận.</p>';
 
     div.innerHTML = '<div class="p-5">'
         + '<div class="flex items-center gap-3 mb-3">'
@@ -315,7 +316,7 @@ function submitComment(postId, inputEl) {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: params.toString()
-    }, false).then(function() {
+    }, false).then(function () {
         inputEl.value = '';
         var list = document.getElementById('comments-list-' + postId);
         if (!list) return;
@@ -342,9 +343,9 @@ function submitComment(postId, inputEl) {
             var currentCount = parseInt(countSpan.textContent) || 0;
             countSpan.textContent = (currentCount + 1) + ' bình luận';
         }
-    }).catch(function(err) {
+    }).catch(function (err) {
         console.error('Comment error:', err);
-    }).finally(function() {
+    }).finally(function () {
         if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.innerHTML = 'Gửi';
@@ -366,10 +367,10 @@ function setupPostForm() {
     if (!form) return;
 
     if (imageInput && previewContainer) {
-        imageInput.addEventListener('change', function() {
+        imageInput.addEventListener('change', function () {
             if (this.files && this.files[0]) {
                 var reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = function (e) {
                     previewImg.src = e.target.result;
                     previewContainer.classList.remove('hidden');
                 };
@@ -377,14 +378,14 @@ function setupPostForm() {
             }
         });
 
-        cancelPreviewBtn.addEventListener('click', function() {
+        cancelPreviewBtn.addEventListener('click', function () {
             imageInput.value = '';
             previewContainer.classList.add('hidden');
             previewImg.src = '';
         });
     }
 
-    form.addEventListener('submit', async function(e) {
+    form.addEventListener('submit', async function (e) {
         e.preventDefault();
         var content = document.getElementById('postContent').value.trim();
         var hasImage = imageInput && imageInput.files && imageInput.files.length > 0;
@@ -463,7 +464,7 @@ async function loadAnnouncements() {
             return;
         }
         box.innerHTML = '';
-        data.forEach(function(ann) {
+        data.forEach(function (ann) {
             var div = document.createElement('div');
             div.className = 'border-b border-gray-100 py-3 px-1 last:border-0 hover:bg-gray-50 transition rounded-lg cursor-default';
             div.innerHTML = '<div class="flex items-center gap-2 mb-1">'
@@ -486,11 +487,11 @@ function extractTopics(posts) {
     if (!box) return;
 
     var tagCounts = {};
-    (posts || []).forEach(function(post) {
+    (posts || []).forEach(function (post) {
         if (!post.content) return;
         var matches = post.content.match(/#[\w\u00C0-\u024F\u1E00-\u1EFF-]+/g);
         if (matches) {
-            matches.forEach(function(tag) {
+            matches.forEach(function (tag) {
                 var lower = tag.toLowerCase();
                 tagCounts[lower] = (tagCounts[lower] || 0) + 1;
             });
@@ -498,7 +499,7 @@ function extractTopics(posts) {
     });
 
     // Sort by count desc
-    var sorted = Object.keys(tagCounts).sort(function(a, b) { return tagCounts[b] - tagCounts[a]; });
+    var sorted = Object.keys(tagCounts).sort(function (a, b) { return tagCounts[b] - tagCounts[a]; });
 
     if (sorted.length === 0) {
         box.innerHTML = '<p class="text-xs text-gray-400 text-center py-4 w-full">Chưa có chủ đề nào.</p>';
@@ -518,12 +519,12 @@ function extractTopics(posts) {
         'bg-red-50 text-red-500 hover:bg-red-100'
     ];
 
-    sorted.slice(0, 15).forEach(function(tag, idx) {
+    sorted.slice(0, 15).forEach(function (tag, idx) {
         var colorClass = colors[idx % colors.length];
         var btn = document.createElement('button');
         btn.className = 'text-xs font-medium px-3 py-1.5 rounded-full transition cursor-pointer ' + colorClass;
         btn.textContent = tag + ' (' + tagCounts[tag] + ')';
-        btn.onclick = function() {
+        btn.onclick = function () {
             var input = document.getElementById('searchInput');
             if (input) input.value = tag;
             searchPosts();

@@ -8,8 +8,14 @@
         </a>
         <div class="flex items-center gap-1">
             <a href="${pageContext.request.contextPath}/HomeServlet" class="nav-link ${param.activeMenu == 'home' ? 'active' : ''}"><i class="fas fa-home"></i> Trang chủ</a>
-            <a href="${pageContext.request.contextPath}/FriendServlet" class="nav-link ${param.activeMenu == 'friend' ? 'active' : ''}"><i class="fas fa-user-friends"></i> Bạn bè</a>
-            <a href="${pageContext.request.contextPath}/ChatServlet" class="nav-link ${param.activeMenu == 'chat' ? 'active' : ''}"><i class="fas fa-comment-dots"></i> Tin nhắn</a>
+            <a href="${pageContext.request.contextPath}/FriendServlet" class="relative nav-link ${param.activeMenu == 'friend' ? 'active' : ''}">
+                <i class="fas fa-user-friends"></i> Bạn bè
+                <span id="globalFriendBadge" class="hidden absolute top-0 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm leading-none border border-white"></span>
+            </a>
+            <a href="${pageContext.request.contextPath}/ChatServlet" class="relative nav-link ${param.activeMenu == 'chat' ? 'active' : ''}">
+                <i class="fas fa-comment-dots"></i> Tin nhắn
+                <span id="globalMessageBadge" class="hidden absolute top-0 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm leading-none border border-white"></span>
+            </a>
         </div>
         <div class="flex items-center gap-3 flex-shrink-0 relative">
             <c:if test="${sessionScope.role == 'ROLE_ADMIN'}">
