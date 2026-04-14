@@ -10,7 +10,7 @@
             <script src="https://cdn.tailwindcss.com"></script>
             <script>tailwind.config = { theme: { extend: { colors: { primary: '#ae1a21', 'primary-dark': '#8a141a' } } } }</script>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-            <link rel="stylesheet" href="${pageContext.request.contextPath}/css/app.css">
+            <link rel="stylesheet" href="${pageContext.request.contextPath}/css/app.css?v=3.1">
         </head>
 
         <body class="bg-gray-100 font-sans text-gray-900"
@@ -221,11 +221,11 @@
                     });
                 }
             </script>
-            <script src="${pageContext.request.contextPath}/js/api-client.js?v=2.1"></script>
+            <script src="${pageContext.request.contextPath}/js/api-client.js?v=3.1"></script>
             <c:if test="${profileUser.id != sessionScope.userId}">
-                <script src="${pageContext.request.contextPath}/js/friend-servlet.js?v=2.1"></script>
+                <script src="${pageContext.request.contextPath}/js/friend-servlet.js?v=3.1"></script>
             </c:if>
-            <script src="${pageContext.request.contextPath}/js/home-servlet.js?v=2.1"></script>
+            <script src="${pageContext.request.contextPath}/js/home-servlet.js?v=3.1"></script>
 
         </body>
 

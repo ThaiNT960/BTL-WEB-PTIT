@@ -1,8 +1,10 @@
 package com.ptit.socialchat.servlet;
 
 import com.google.gson.Gson;
+import com.ptit.socialchat.dao.AnnouncementDAO;
 import com.ptit.socialchat.dao.FriendDAO;
 import com.ptit.socialchat.dao.PostDAO;
+import com.ptit.socialchat.model.Announcement;
 import com.ptit.socialchat.model.Comment;
 import com.ptit.socialchat.model.Post;
 import com.ptit.socialchat.service.PostService;
@@ -16,18 +18,47 @@ public class PostServlet extends HttpServlet {
 
     private final PostDAO postDAO = new PostDAO();
     private final FriendDAO friendDAO = new FriendDAO();
+    private final AnnouncementDAO announcementDAO = new AnnouncementDAO();
     private final PostService postService = new PostService();
     private final Gson gson = new Gson();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
+
+        // Trả về thông báo từ admin
+        String type = req.getParameter("type");
+        if ("announcements".equals(type)) {
+            List<Announcement> announcements = announcementDAO.findRecent(10);
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (Announcement a : announcements) {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("id", a.getId());
+                m.put("title", a.getTitle());
+                m.put("content", a.getContent());
+                m.put("createdAt", a.getCreatedAt() != null ? a.getCreatedAt().toString() : "");
+                m.put("adminName", a.getAdmin().getFullName());
+                result.add(m);
+            }
+            resp.setContentType("application/json;charset=UTF-8");
+            resp.getWriter().write(gson.toJson(result));
+            return;
+        }
+
         // Return JSON list of posts for AJAX
         HttpSession session = req.getSession(false);
         long currentUserId = (long) session.getAttribute("userId");
 
         String targetUsername = req.getParameter("username");
-        List<Post> posts = postDAO.findAllOrderByCreatedAtDesc();
+        String searchQuery = req.getParameter("search");
+
+        List<Post> posts;
+        if (searchQuery != null && !searchQuery.trim().isEmpty()) {
+            posts = postDAO.searchApproved(searchQuery.trim());
+        } else {
+            posts = postDAO.findAllOrderByCreatedAtDesc();
+        }
+
         if (targetUsername != null && !targetUsername.trim().isEmpty()) {
             posts = posts.stream()
                 .filter(p -> targetUsername.equals(p.getUser().getUsername()))
@@ -110,10 +141,16 @@ public class PostServlet extends HttpServlet {
         String imageUrl = req.getParameter("imageUrl");
         System.out.println("[PostServlet] handleCreatePost called: userId=" + userId + ", content=" + content + ", imageUrl=" + imageUrl);
         try {
-            postService.createPost(userId, content, imageUrl);
+            PostService.CreatePostResult result = postService.createPost(userId, content, imageUrl);
             resp.setContentType("application/json;charset=UTF-8");
-            resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("status", "ok")));
-            System.out.println("[PostServlet] Post created successfully");
+            java.util.Map<String, Object> response = new java.util.LinkedHashMap<>();
+            response.put("status", result.getStatus());
+            response.put("message", result.getMessage());
+            if (result.getLabel() != null) {
+                response.put("moderationLabel", result.getLabel());
+            }
+            resp.getWriter().write(gson.toJson(response));
+            System.out.println("[PostServlet] Post result: status=" + result.getStatus());
         } catch (IllegalArgumentException e) {
             System.err.println("[PostServlet] Validation error: " + e.getMessage());
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);

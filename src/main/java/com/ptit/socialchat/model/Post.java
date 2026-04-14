@@ -22,6 +22,15 @@ public class Post {
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Column(name = "status", length = 20)
+    private String status = "APPROVED";
+
+    @Column(name = "moderation_label", length = 20)
+    private String moderationLabel;
+
+    @Column(name = "moderation_confidence")
+    private Double moderationConfidence;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -112,5 +121,29 @@ public class Post {
 
     public void setLiked(boolean liked) {
         this.liked = liked;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getModerationLabel() {
+        return moderationLabel;
+    }
+
+    public void setModerationLabel(String moderationLabel) {
+        this.moderationLabel = moderationLabel;
+    }
+
+    public Double getModerationConfidence() {
+        return moderationConfidence;
+    }
+
+    public void setModerationConfidence(Double moderationConfidence) {
+        this.moderationConfidence = moderationConfidence;
     }
 }
