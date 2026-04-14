@@ -151,6 +151,12 @@ public class ChatServlet extends HttpServlet {
             }
         } else if ("clearHistory".equals(action)) {
             String otherUser = req.getParameter("otherUser");
+            if (otherUser == null || otherUser.trim().isEmpty()) {
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                resp.setContentType("application/json;charset=UTF-8");
+                resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("error", "Vui lòng cung cấp tên người dùng.")));
+                return;
+            }
             try {
                 chatService.clearChatHistory(currentUserId, otherUser);
                 resp.setContentType("application/json;charset=UTF-8");
@@ -160,11 +166,21 @@ public class ChatServlet extends HttpServlet {
             }
         } else if ("recall".equals(action)) {
             String msgIdStr = req.getParameter("messageId");
+            if (msgIdStr == null || msgIdStr.trim().isEmpty()) {
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                resp.setContentType("application/json;charset=UTF-8");
+                resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("error", "Vui lòng cung cấp mã tin nhắn.")));
+                return;
+            }
             try {
                 long messageId = Long.parseLong(msgIdStr);
                 chatService.recallMessage(messageId, currentUserId);
                 resp.setContentType("application/json;charset=UTF-8");
                 resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("status", "ok")));
+            } catch (NumberFormatException e) {
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                resp.setContentType("application/json;charset=UTF-8");
+                resp.getWriter().write(gson.toJson(java.util.Collections.singletonMap("error", "Mã tin nhắn không hợp lệ.")));
             } catch (Exception e) {
                 resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             }

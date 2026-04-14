@@ -14,19 +14,23 @@ import javax.websocket.server.ServerEndpoint;
 @ServerEndpoint(value = "/ws/chat", configurator = WsConfigurator.class)
 public class ChatWebSocket {
 
-    // Manage all active sessions mapping userId -> Session
-    private static final Map<Long, Session> userSessions = new ConcurrentHashMap<>();
+    // Manage all active sessions mapping userId -> Set of Sessions
+    private static final Map<Long, java.util.Set<Session>> userSessions = new ConcurrentHashMap<>();
     private static final Gson gson = new Gson();
 
     @OnOpen
     public void onOpen(Session session) {
         Long userId = (Long) session.getUserProperties().get("userId");
         if (userId != null) {
-            userSessions.put(userId, session);
+            userSessions.computeIfAbsent(userId, k -> java.util.Collections.newSetFromMap(new ConcurrentHashMap<>())).add(session);
         } else {
-            try {
-                session.close();
-            } catch (IOException ignored) {}
+            // Defer closing the session to prevent IllegalStateException in Tomcat's doOnOpen
+            new Thread(() -> {
+                try {
+                    Thread.sleep(100);
+                    session.close(new javax.websocket.CloseReason(javax.websocket.CloseReason.CloseCodes.VIOLATED_POLICY, "Unauthorized"));
+                } catch (Exception ignored) {}
+            }).start();
         }
     }
 
@@ -41,7 +45,13 @@ public class ChatWebSocket {
     public void onClose(Session session) {
         Long userId = (Long) session.getUserProperties().get("userId");
         if (userId != null) {
-            userSessions.remove(userId);
+            java.util.Set<Session> sessions = userSessions.get(userId);
+            if (sessions != null) {
+                sessions.remove(session);
+                if (sessions.isEmpty()) {
+                    userSessions.remove(userId);
+                }
+            }
         }
     }
 
@@ -50,7 +60,13 @@ public class ChatWebSocket {
         // Handle error, optionally remove session
         Long userId = (Long) session.getUserProperties().get("userId");
         if (userId != null) {
-            userSessions.remove(userId);
+            java.util.Set<Session> sessions = userSessions.get(userId);
+            if (sessions != null) {
+                sessions.remove(session);
+                if (sessions.isEmpty()) {
+                    userSessions.remove(userId);
+                }
+            }
         }
         try {
             session.close();
@@ -58,14 +74,30 @@ public class ChatWebSocket {
     }
 
     /**
-     * Broadcast a JSON event to a specific user id.
+     * Broadcast a JSON event to a specific user id (to all their active sessions).
      */
     public static void sendToUser(long userId, Object payload) {
-        Session session = userSessions.get(userId);
-        if (session != null && session.isOpen()) {
-            try {
-                session.getBasicRemote().sendText(gson.toJson(payload));
-            } catch (IOException e) {
+        java.util.Set<Session> sessions = userSessions.get(userId);
+        if (sessions != null && !sessions.isEmpty()) {
+            String json = gson.toJson(payload);
+            java.util.List<Session> deadSessions = new java.util.ArrayList<>();
+            
+            for (Session session : sessions) {
+                if (session.isOpen()) {
+                    try {
+                        session.getBasicRemote().sendText(json);
+                    } catch (IOException e) {
+                        deadSessions.add(session);
+                    }
+                } else {
+                    deadSessions.add(session);
+                }
+            }
+            
+            if (!deadSessions.isEmpty()) {
+                sessions.removeAll(deadSessions);
+            }
+            if (sessions.isEmpty()) {
                 userSessions.remove(userId);
             }
         }

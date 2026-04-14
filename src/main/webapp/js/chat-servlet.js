@@ -50,8 +50,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!payload) return;
 
         if (payload.type === 'NEW_MESSAGE') {
-            if (payload.senderUsername === currentChatUser) {
-                // If the message is from our currently active chat window, load it immediately
+            if (payload.senderUsername === currentChatUser || payload.receiverUsername === currentChatUser) {
+                // If the message is from/to our currently active chat window, load it immediately
                 loadChatHistory(true);
             }
         } else if (payload.type === 'MESSAGE_RECALLED') {

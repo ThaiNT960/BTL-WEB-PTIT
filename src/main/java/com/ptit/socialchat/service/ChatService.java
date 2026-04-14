@@ -63,7 +63,11 @@ public class ChatService {
             java.util.Map<String, Object> event = new java.util.HashMap<>();
             event.put("type", "NEW_MESSAGE");
             event.put("senderUsername", sender.getUsername());
+            event.put("receiverUsername", receiver.getUsername());
+            // Send to receiver
             com.ptit.socialchat.websocket.ChatWebSocket.sendToUser(receiver.getId(), event);
+            // Send to sender (to sync multiple tabs)
+            com.ptit.socialchat.websocket.ChatWebSocket.sendToUser(currentUserId, event);
         }
     }
 
@@ -137,5 +141,12 @@ public class ChatService {
         event.put("partnerUsername", msg.getSender().getUsername());
         
         com.ptit.socialchat.websocket.ChatWebSocket.sendToUser(receiverId, event);
+        
+        // Sync to sender's other tabs
+        java.util.Map<String, Object> eventSelf = new java.util.HashMap<>();
+        eventSelf.put("type", "MESSAGE_RECALLED");
+        eventSelf.put("messageId", messageId);
+        eventSelf.put("partnerUsername", msg.getReceiver().getUsername());
+        com.ptit.socialchat.websocket.ChatWebSocket.sendToUser(currentUserId, eventSelf);
     }
 }

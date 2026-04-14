@@ -30,6 +30,7 @@ public class HibernateUtil {
                 if (registry != null) {
                     StandardServiceRegistryBuilder.destroy(registry);
                 }
+                throw new ExceptionInInitializerError("Initial SessionFactory creation failed! Kiểm tra lại kết nối MySQL (Username/Password). Chi tiết lỗi: " + e.getMessage());
             }
         }
         return sessionFactory;
