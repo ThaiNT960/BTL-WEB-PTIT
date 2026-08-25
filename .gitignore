@@ -4,6 +4,19 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### User Uploads & Temp Files ###
+src/main/webappuploads/
+src/main/webapp/uploads/avatars/*
+!src/main/webapp/uploads/avatars/.gitkeep
+src/main/webapp/uploads/chats/*
+!src/main/webapp/uploads/chats/.gitkeep
+
+### Logs & OS Files ###
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
+
 ### STS ###
 .apt_generated
 .apt_generated_tests
@@ -19,6 +32,7 @@ target/
 *.iws
 *.iml
 *.ipr
+out/
 
 ### NetBeans ###
 /nbproject/private/
