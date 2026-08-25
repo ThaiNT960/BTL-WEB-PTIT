@@ -150,7 +150,6 @@ async function loadPosts(searchQuery) {
 
         // Extract and render topics from all loaded posts
         extractTopics(allPostsData);
-        posts.forEach(function (post) { renderPost(post, feed); });
     } catch (e) { console.error('loadPosts error:', e); }
 }
 
